@@ -1,0 +1,64 @@
+﻿/* Put css styles for home view here */
+.home-view p {
+	padding: 5px;
+}
+
+.productName {
+     width: 78%;
+    float: left; 
+}
+.price {
+    display: inline-block;
+    width: 10%;
+    text-align: right;
+}
+.quantity {
+    display: inline-block;
+    width: 10%;
+    text-align: right;
+}
+.label {
+        font-weight: bold;
+    padding: 5px 0; 
+}
+
+.overlayContents{
+  padding: 10px;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 15px;
+  height:auto;
+  background-color:#5F5F5F;
+}
+.display {
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
+	border-radius: 3px;
+	-moz-box-shadow: inset 0 1px 1px #0A0B0D, 0px 1px #5E6370;
+	-webkit-box-shadow: inset 0 1px 1px #0A0B0D, 0px 1px #5E6370;
+	box-shadow: inset 0 1px 1px #0A0B0D, 0px 1px #5E6370;
+	-webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+	background-color: #17181E;
+	border: 1px solid #181A20;
+	padding: 0 10px;
+	text-align: right;
+}
+
+.display-inner {
+
+    overflow: hidden;
+}
+.display-text {
+	color: #fff;
+	font-size: 22px;
+	line-height: 42px;
+	overflow: hidden;
+	unicode-bidi: embed;
+
+    float: right;
+}
+.сbutton .dx-widget .dx-feedback .dx-button .dx-button-normal{
+   width:27%;
+}
