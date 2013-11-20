@@ -1,32 +1,129 @@
 ﻿"use strict";
 
-window.MyApp = {};
+window.MobileSales = {};
 
 $(function () {
     FastClick.attach(document.body);
-
-    var devices = DevExpress.devices;
-    var defaultLayout = "slideout";
-    if (devices.current().platform === "desktop") {
-        defaultLayout = "desktop";
-    }
-    MyApp.app = new DevExpress.framework.html.HtmlApplication({
-        namespace: MyApp,
-        
-        defaultLayout: defaultLayout,
+    var ms = window.MobileSales,
+    app,
+    currentBackAction,
+    device = DevExpress.devices.current(),
+    iosVersion = DevExpress.devices.iosVersion(),
+    APP_SETTINGS = {
+        namespace: ms,
+        defaultLayout: "slideout",
         navigation: [
-          {
-            title: "Home",
-            action: "#home",
-            icon: "home"
-          },
-          {
-            title: "About",
-            action: "#about",
-            icon: "info"
-          }
+            {
+                "id": "Home",
+                "title": "Home",
+                "action": "#Home",
+                "icon": "home"
+            },
+            {
+                "id": "About",
+                "title": "About",
+                "action": "#about",
+                "icon": "info"
+            }
         ]
+    };
+    $.extend(ms, {
+        hardwareBackButton: (device.phone && device.platform === "win8") || device.platform === "android" || device.platform === "tizen",
     });
-    MyApp.app.router.register(":view", {view: "home"});
-    MyApp.app.navigate();   
+
+    var subviewMap = {
+        "Home": ["Orders/*", "CreateOrder/*"],
+    };
+    function testUri(patterns, uri) {
+        var pattern = [],
+            regexp;
+
+        $.each(patterns, function () {
+            pattern.push(this.replace("/", "\\/").replace("*", ".+"));
+        });
+
+        regexp = new RegExp("^(" + pattern.join("|") + ")$");
+        return regexp.test(uri);
+    }
+    function startApp() {
+  
+        ms.app.navigate();
+    }
+    function onNavigate(args) {
+        if (!args.currentUri)
+            return;
+
+        if (subviewMap[args.uri] && testUri(subviewMap[args.uri], args.currentUri) && args.options.location === "navigation") {
+            args.cancel = true;
+            return;
+        }
+         
+    }
+    function onViewShown(args) {
+        var viewInfo = args.viewInfo;
+        if (viewInfo.model.hideNavigationButton)
+            viewInfo.renderResult.$markup.find(".nav-button-item").remove();
+
+        currentBackAction = viewInfo.model.backButtonDown;
+    }
+    function onBackButton() {
+        if (currentBackAction) {
+            currentBackAction();
+        } else {
+            if (wo.app.canBack()) {
+                wo.app.back();
+            }
+            else {
+                if (confirm("Are you sure you want to exit?")) {
+                    switch (device.platform) {
+                        case "tizen":
+                            tizen.application.getCurrentApplication().exit();
+                            break;
+                        case "android":
+                            navigator.app.exitApp();
+                            break;
+                        case "win8":
+                            window.external.Notify("DevExpress.ExitApp");
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    function onDeviceReady() {
+        document.addEventListener("backbutton", onBackButton, false);
+        //document.addEventListener("pause", wo.saveCurrentWorkout, false);
+        navigator.splashscreen.hide();
+    }
+
+    $(function () {
+        FastClick.attach(document.body);
+        app = ms.app = new DevExpress.framework.html.HtmlApplication(APP_SETTINGS);
+        app.router.register(":view/:item", { view: "Home", item: undefined });
+        ms.app.viewShown.add(onViewShown);
+        ms.app.navigationManager.navigating.add(onNavigate);
+
+        // enable iOS7 theme
+        if (device.platform === "ios" && iosVersion && iosVersion[0] === 7) {
+            $(".dx-viewport")
+                .removeClass("dx-theme-ios")
+                .addClass("dx-theme-ios7");
+        }
+
+        //ms.initUserData();
+        startApp();
+
+        setTimeout(function () {
+            document.addEventListener("deviceready", onDeviceReady, false);
+            //window.onunload = wo.saveCurrentWorkout;
+
+            if (device.platform == "tizen") {
+                document.addEventListener("tizenhwkey", function (e) {
+                    if (e.keyName === "back")
+                        onBackButton();
+                });
+            }
+        }, 1000);
+    });
+
 });
