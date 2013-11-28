@@ -59,6 +59,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="js\dataservice.js" />
+    <None Include="js\jquery-2.0.3.intellisense.js" />
+    <Content Include="js\jquery-2.0.3.js" />
     <Content Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
@@ -101,13 +103,15 @@
     <Content Include="layouts\Split\SplitLayout.css" />
     <Content Include="layouts\Split\SplitLayout.html" />
     <Content Include="layouts\Split\SplitLayout.js" />
-    <None Include="Scripts\breeze.intellisense.js" />
-    <Content Include="Scripts\breeze.debug.js" />
-    <Content Include="Scripts\breeze.min.js" />
-    <Content Include="Scripts\datajs-1.1.1.js" />
-    <Content Include="Scripts\datajs-1.1.1.min.js" />
-    <Content Include="Scripts\q.js" />
-    <Content Include="Scripts\q.min.js" />
+    <None Include="js\breeze.intellisense.js" />
+    <Content Include="js\breeze.debug.js" />
+    <Content Include="js\breeze.min.js" />
+    <Content Include="js\datajs-1.1.0.js" />
+    <Content Include="js\datajs-1.1.0.min.js" />
+    <Content Include="js\datajs-1.1.1.js" />
+    <Content Include="js\datajs-1.1.1.min.js" />
+    <Content Include="js\q.js" />
+    <Content Include="js\q.min.js" />
     <Content Include="views\about.html" />
     <Content Include="views\home.css" />
     <Content Include="views\home.html" />

@@ -110,7 +110,7 @@ $(function () {
                 .addClass("dx-theme-ios7");
         }
 
-        //ms.initUserData();
+        ms.initUserData();
         startApp();
 
         setTimeout(function () {
