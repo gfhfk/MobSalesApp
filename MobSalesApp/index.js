@@ -19,6 +19,12 @@ $(function () {
                 "action": "#Home",
                 "icon": "home"
             },
+             {
+                 "id": "Settings",
+                 "title": "Settings",
+                 "action": "#Settings",
+                 "icon": "card"
+             },
             {
                 "id": "About",
                 "title": "About",
@@ -109,8 +115,7 @@ $(function () {
                 .removeClass("dx-theme-ios")
                 .addClass("dx-theme-ios7");
         }
-
-        ms.initUserData();
+        ms.dataservice.initUserData();
         startApp();
 
         setTimeout(function () {
