@@ -63,6 +63,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         initUserData: initUserData,
         queries: queries,
         loadData: loadData,
+        getRoutes: getRoutes,
         //clearUserData: clearUserData,
 
     };

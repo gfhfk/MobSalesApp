@@ -4,7 +4,7 @@
         self = this;
     
     var vm = {
-        routes:[]
+        routes:app.dataservice.getRoutes(),
 
     };
     return vm;
