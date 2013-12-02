@@ -105,7 +105,7 @@ $(function () {
     $(function () {
         FastClick.attach(document.body);
         app = ms.app = new DevExpress.framework.html.HtmlApplication(APP_SETTINGS);
-        app.router.register(":view/:item", { view: "Home", item: undefined });
+        app.router.register(":view/:item", { view: "Settings", item: undefined });
         ms.app.viewShown.add(onViewShown);
         ms.app.navigationManager.navigating.add(onNavigate);
 
