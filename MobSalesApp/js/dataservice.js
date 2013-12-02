@@ -12,12 +12,10 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         {
             name: "Routes",
             query: breeze.EntityQuery.from("Routes").orderBy("RouteID"),
-            synchronized: ko.observable(false)
         },
         {
             name: "Customers",
-            query: reeze.EntityQuery.from("Customers").orderBy("CustomerName"),
-            synchronized: ko.observable(false)
+            query: breeze.EntityQuery.from("Customers").orderBy("CustomerName"),
          },
     ];
     
@@ -43,14 +41,18 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
             .orderBy("CustomerName");
     };
 
+    //function loadData(query) {
+    //    manager.executeQuery(query).then(function (data) {
+    //        logger.log("Loaded data: " + query.resourceName);
+    //    }).fail(function (error) {
+    //        logger.error("Load data error. Try later.");
+    //        logger.log(error);
+    //    });
+    //};
+
     function loadData(query) {
-        manager.executeQuery(query).then(function (data) {
-            logger.log("Loaded data: " + query.resourceName);
-        }).fail(function (error) {
-            logger.error("Load data error. Try later.");
-            logger.log(error);
-        });
-    };
+        return manager.executeQuery(query);
+    }
     function  getRoutes(){
         return manager.executeQueryLocally(queryRoutes());
     };
@@ -59,7 +61,8 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         manager: manager,
         metadataStore: manager.metadataStore,
         initUserData: initUserData,
-        queries: queries
+        queries: queries,
+        loadData: loadData,
         //clearUserData: clearUserData,
 
     };

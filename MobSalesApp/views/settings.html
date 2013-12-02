@@ -1,0 +1,11 @@
+﻿<div data-options="dxView : { name: 'Settings', title: 'Settings' } ">
+    <div data-options="dxContent : { targetPlaceholder: 'content' } ">
+        <div data-bind="dxList: { items: entityList }">
+            <div data-options="dxTemplate : { name: 'item' }">
+                <div data-bind="text: $data.name" class="entity-name"> </div>
+                <div data-bind="text: $data.status" class="entity-status"></div>
+
+            </div>
+        </div>
+    </div>
+</div>

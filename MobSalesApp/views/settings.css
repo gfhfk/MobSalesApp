@@ -1,0 +1,8 @@
+﻿.entity-name {
+    white-space: pre-wrap;
+    float: left; 
+}
+.entity-status {
+    font-size: 12px;
+    float: right; 
+}

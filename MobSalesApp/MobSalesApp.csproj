@@ -115,6 +115,9 @@
     <Content Include="js\q.min.js" />
     <None Include="Scripts\_references.js" />
     <Content Include="views\about.html" />
+    <Content Include="views\settings.css" />
+    <Content Include="views\settings.js" />
+    <Content Include="views\settings.html" />
     <Content Include="views\home.css" />
     <Content Include="views\home.html" />
     <Content Include="views\home.js" />

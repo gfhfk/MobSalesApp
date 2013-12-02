@@ -2,8 +2,9 @@
     var app = MobileSales,
         
         self = this;
+    
     var vm = {
-        routes: app.dataservice.getRoutes(),
+        routes:[]
 
     };
     return vm;
