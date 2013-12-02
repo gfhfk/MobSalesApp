@@ -1,5 +1,5 @@
 ﻿/// <reference path="../Scripts/_references.js" />
-!function ($, DX, app, undefined) {
+MobileSales.dataservice =function ($, DX, app, undefined) {
     var DATA_VERSION_KEY = "mobilesales-version",
     DATA_KEY = "mobilesales-data",
     logger = app.logger;
@@ -8,14 +8,26 @@
    // serviceName = "http://localhost:23888/odata/";
     breeze.config.initializeAdapterInstances({ dataService: "OData" });
     var manager = new breeze.EntityManager(serviceName);
-  
+    var queries = [
+        {
+            name: "Routes",
+            query: breeze.EntityQuery.from("Routes").orderBy("RouteID"),
+            synchronized: ko.observable(false)
+        },
+        {
+            name: "Customers",
+            query: reeze.EntityQuery.from("Customers").orderBy("CustomerName"),
+            synchronized: ko.observable(false)
+         },
+    ];
     
     function initUserData() {
         var dataFromStorage = localStorage.getItem(DATA_KEY);
         if (dataFromStorage) {
             manager.importEntities(dataFromStorage);
+            return true;
         } else {
-            synchronizeData();
+            return false;
         }
     }
     
@@ -39,13 +51,17 @@
             logger.log(error);
         });
     };
+    function  getRoutes(){
+        return manager.executeQueryLocally(queryRoutes());
+    };
 
-    $.extend(app, {
+    var dataservice =  {
         manager: manager,
         metadataStore: manager.metadataStore,
         initUserData: initUserData,
+        queries: queries
         //clearUserData: clearUserData,
 
-    });
-
+    };
+    return dataservice;
 }(jQuery, DevExpress, MobileSales);

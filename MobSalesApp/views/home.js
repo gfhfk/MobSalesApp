@@ -1,7 +1,9 @@
 ﻿MobileSales.Home = function (params) {
     var app = MobileSales,
+        
         self = this;
     var vm = {
+        routes: app.dataservice.getRoutes(),
 
     };
     return vm;
