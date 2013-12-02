@@ -13,7 +13,7 @@
 //        orderDetails: ko.observableArray(),
 //        find: function () {
 //            vm.showSearch(!vm.showSearch());
-//            vm.productTypeId(0);
+//            vm.productTypeId(0); 
 //        },
 //         showOverlay: showOverlay,
 //        hideOverlay: hideOverlay,
