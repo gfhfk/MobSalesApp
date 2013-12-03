@@ -25,6 +25,7 @@
 
 .dx-theme-win8 .split-layout .layout-header .dx-toolbar {
     margin-left: -63px;
+    background: transparent;
 }
 
 .dx-theme-win8 .split-layout .layout-header .dx-toolbar-center {
@@ -78,4 +79,8 @@
 .dx-theme-win8 .have-static-appbar .left-content,
 .dx-theme-win8 .have-static-appbar .right-content {
     margin-bottom: 82px;
+}
+.split-layout .load-panel {
+    top: 50%;
+    left: 50%;
 }

@@ -58,9 +58,23 @@
     <Reference Include="System.EnterpriseServices" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="css\dx.android.holo-light.css" />
+    <Content Include="css\dx.generic.light.css" />
+    <Content Include="css\dx.win8.black.css" />
+    <Content Include="css\dx.win8.white.css" />
     <Content Include="js\dataservice.js" />
     <None Include="js\jquery-2.0.3.intellisense.js" />
+    <Content Include="js\dx.phonejs.debug.js" />
+    <Content Include="js\globalize.js" />
+    <Content Include="js\jquery-1.10.2.js" />
+    <Content Include="js\jquery-1.10.2.min.js" />
     <Content Include="js\jquery-2.0.3.js" />
+    <Content Include="js\jquery-2.0.3.min.js" />
+    <Content Include="js\knockout-3.0.0.debug.js" />
+    <Content Include="js\knockout-3.0.0.js" />
+    <Content Include="js\localization\dx.phonejs.de.js" />
+    <Content Include="js\localization\dx.phonejs.ja.js" />
+    <Content Include="js\localization\dx.phonejs.ru.js" />
     <Content Include="js\logger.js" />
     <Content Include="packages.config" />
     <None Include="Web.Debug.config">

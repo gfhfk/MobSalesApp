@@ -1,17 +1,72 @@
-﻿<div class="win8phone-layout dx-black-background" data-options="dxLayout : { name: 'simple', platform: 'win8', phone: true, controller: 'win8simple' } " >
+﻿<div class="win8phone-layout dx-black-background" data-options="dxLayout : { name: 'simple', platform: 'win8' } " >
     <div class="layout-frame dx-content-background">
-        <div class="dx-top-header" data-bind="text: title">Header</div>
+        <div class="dx-top-header" data-options="dxContentPlaceholder : { name: 'header', transition: 'none' }">
+            <div data-bind="text: title">
+            </div>
+        </div>
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' } " >
-            <div class="load-panel" data-bind="dxLoadPanel: { visible: true, shading: false, targetContainer: false }"></div>
+            <div>
+                <div class="load-panel" data-bind="dxLoadIndicator: { visible: true }"></div>
+            </div>
         </div>
     </div>
-    <div data-bind="dxToolbar: { items: [], visible: false }" class="layout-toolbar-bottom semi-hidden"
-        data-options="dxCommandContainer : { locations: [
-            {'name':'create', 'align':'center'},
-            {'name':'edit', 'align':'center'},
-            {'name':'save', 'align':'center'},
-            {'name':'cancel', 'align':'center'},
-            {'name':'delete', 'align':'center'}
-        ] } " >
+    <div class="layout-footer" data-options="dxContentPlaceholder : { name: 'footer' }">
+        <div class="layout-toolbar-bottom win8 semi-hidden" data-options="dxToolbar: { items: [] }, dxCommandContainer : { id: 'win8-phone-appbar' } " >
+        </div>
     </div>
+</div>
+
+<div class="simple-layout" data-options="dxLayout : { name: 'simple', platform: 'ios' } " >
+    <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
+        <div class="layout-header">
+            <div data-bind="dxToolbar: { items: [ { text: title, align: 'center' } ] }"
+                 data-options="dxCommandContainer : { id: 'ios-header-toolbar' }">
+            </div>
+        </div>
+
+        <div class="layout-content dx-ios-stripes" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
+            <div class="load-panel" data-bind="dxLoadIndicator: { visible: true }"></div>
+        </div>
+</div>
+</div>
+
+<div class="simple-layout" data-options="dxLayout : { name: 'simple', platform: 'android' } " >
+    <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
+        <div class="layout-header">
+            <div data-bind="dxToolbar: { items: [ { text: title, align: 'center' } ] }"
+                 data-options="dxCommandContainer : { id: 'android-simple-toolbar' }">
+            </div>
+        </div>
+
+        <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
+            <div class="load-panel" data-bind="dxLoadIndicator: { visible: true }"></div>
+        </div>
+    </div>
+</div>
+
+<div class="simple-layout" data-options="dxLayout : { name: 'simple', platform: 'tizen' } " >
+    <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
+        <div class="layout-header" data-options="dxContentPlaceholder : { name: 'header' } " >
+            <div data-bind="dxToolbar: { items: [ { text: title, align: 'center' } ] }">
+            </div>
+        </div>
+
+        <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
+            <div class="load-panel" data-bind="dxLoadIndicator: { visible: true }"></div>
+        </div>
+    </div>
+</div>
+
+<div class="simple-layout" data-options="dxLayout : { name: 'simple', platform: 'generic' } " >
+    <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
+        <div class="layout-header">
+            <div data-bind="dxToolbar: { items: [{ text: title, align: 'center' }] }"
+                 data-options="dxCommandContainer : { id: 'generic-header-toolbar' }">
+            </div>
+        </div>
+
+        <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
+            <div class="load-panel" data-bind="dxLoadIndicator: { visible: true }"></div>
+        </div>
+</div>
 </div>

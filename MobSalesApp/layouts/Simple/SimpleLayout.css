@@ -1,4 +1,23 @@
-﻿.win8phone-layout {
+﻿/* Simple  */
+.simple-layout {
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+
+.simple-layout .transition-frame {
+    height: 100%;
+    width: 100%;
+}
+
+.simple-layout .layout-content,
+.simple-layout .transition-frame{
+    height: 100%;
+    width: 100%;
+}
+
+/* Windows Phone 8*/
+.win8phone-layout {
     height: 100%;
     width: 100%;
     overflow: hidden;
@@ -18,12 +37,9 @@
     overflow: hidden;
 }
 
-.win8phone-layout .layout-content > div[data-options] {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
+.win8phone-layout .layout-content > div {
+    height: 100%;
+    width: 100%;
 }
 
 .win8phone-layout .view-content {
@@ -33,15 +49,19 @@
 }
 
 .win8phone-layout .layout-frame {
-    position: absolute;
     height: 100%;
     width: 100%;
 }
-
-.win8phone-layout .layout-frame.has-toolbar-bottom {
+.win8phone-layout.has-toolbar-bottom .layout-frame,
+.win8phone-layout .has-toolbar-bottom.layout-frame {
     height: auto;
     top: 0;
-    bottom: 40px;
+    bottom: 60px;
+    position: absolute;
+}
+
+.win8phone-layout.has-toolbar-bottom .layout-footer {
+    position: static;
 }
 
 /* navigation */
@@ -76,4 +96,11 @@
     -moz-transition: margin-bottom .2s;
     -o-transition: margin-bottom .2s;
     transition: margin-bottom .2s;
+}
+
+.win8phone-layout .dx-active-view.load-panel,
+.win8phone-layout .dx-active-view .load-panel {
+    top: 50%;
+    left: 50%;
+    position: absolute;
 }

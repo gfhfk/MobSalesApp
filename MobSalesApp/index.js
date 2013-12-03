@@ -8,7 +8,6 @@ $(function () {
     app,
     currentBackAction,
     device = DevExpress.devices.current(),
-    iosVersion = DevExpress.devices.iosVersion(),
     APP_SETTINGS = {
         namespace: ms,
         defaultLayout: "slideout",
@@ -109,12 +108,7 @@ $(function () {
         ms.app.viewShown.add(onViewShown);
         ms.app.navigationManager.navigating.add(onNavigate);
 
-        // enable iOS7 theme
-        if (device.platform === "ios" && iosVersion && iosVersion[0] === 7) {
-            $(".dx-viewport")
-                .removeClass("dx-theme-ios")
-                .addClass("dx-theme-ios7");
-        }
+       
         ms.dataservice.initUserData();
         startApp();
 
