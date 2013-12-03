@@ -54,7 +54,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         return manager.executeQuery(query);
     }
     function  getRoutes(){
-        return manager.executeQueryLocally(queryRoutes());
+        return manager.executeQueryLocally(queries[0].query);
     };
 
     var dataservice =  {

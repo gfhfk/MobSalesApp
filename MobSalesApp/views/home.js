@@ -1,12 +1,16 @@
 ﻿MobileSales.Home = function (params) {
     var app = MobileSales,
-        
+       
         self = this;
     
     var vm = {
-        routes:app.dataservice.getRoutes(),
+        routes:ko.observableArray([]),
+        viewShowing: viewShowing,
 
     };
+    function viewShowing() {
+        vm.routes (app.dataservice.getRoutes());
+    }
     return vm;
 };
 

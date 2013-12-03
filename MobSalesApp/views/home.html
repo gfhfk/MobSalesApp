@@ -1,6 +1,6 @@
 ﻿<div data-options="dxView : { name: 'Home', title: 'Home' } ">
     <div data-options="dxContent : { targetPlaceholder: 'content' } ">
-        <div data-bind="dxList: { dataSource: routes }">
+        <div data-bind="dxList: { items: routes }">
             <div data-options="dxTemplate : { name: 'item' }" data-bind="text: RouteName, dxAction: '#customers/{RouteID}'" />
         </div>
     </div>

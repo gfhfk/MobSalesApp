@@ -2491,7 +2491,7 @@
         /// <summary>Reads response headers into array.</summary>
         /// <param name="xhr" type="XMLHttpRequest">HTTP request with response available.</param>
         /// <param name="headers" type="Array">Target array to fill with name/value pairs.</param>
-
+        headers["DataServiceVersion"] = "3.0";
         var responseHeaders = xhr.getAllResponseHeaders().split(/\r?\n/);
         var i, len;
         for (i = 0, len = responseHeaders.length; i < len; i++) {
