@@ -106,8 +106,6 @@
     <Content Include="js\jquery-1.9.1.min.js" />
     <Content Include="js\knockout-2.2.1.js" />
     <Content Include="js\sampleData.js" />
-    <Content Include="layouts\Desktop\DesktopLayout.css" />
-    <Content Include="layouts\Desktop\DesktopLayout.html" />
     <Content Include="layouts\Empty\EmptyLayout.css" />
     <Content Include="layouts\Empty\EmptyLayout.html" />
     <Content Include="layouts\Empty\EmptyLayout.js" />
