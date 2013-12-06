@@ -8,16 +8,22 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
    // serviceName = "http://localhost:23888/odata/";
     breeze.config.initializeAdapterInstances({ dataService: "OData" });
     var manager = new breeze.EntityManager(serviceName);
-    var queries = [
-        {
+    var store = manager.metadataStore;
+
+    var Customer = function () {
+        this.isBeingEdited = ko.observable(false);
+    };
+
+    var queries = {
+       Routes: {
             name: "Routes",
             query: breeze.EntityQuery.from("Routes").orderBy("RouteID"),
         },
-        {
+       Customers: {
             name: "Customers",
             query: breeze.EntityQuery.from("Customers").orderBy("CustomerName"),
          },
-    ];
+    };
     
     function initUserData() {
         var dataFromStorage = localStorage.getItem(DATA_KEY);
@@ -28,33 +34,16 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
             return false;
         }
     }
+
     
-    function synchronizeData() {
-        loadData(queryRoutes());
-        loadData(queryCustomers());
-    }
-    function queryRoutes() {
-        return breeze.EntityQuery.from("Routes").orderBy("RouteID");
-    };
-    function queryCustomers() {
-        return breeze.EntityQuery.from("Customers")
-            .orderBy("CustomerName");
-    };
-
-    //function loadData(query) {
-    //    manager.executeQuery(query).then(function (data) {
-    //        logger.log("Loaded data: " + query.resourceName);
-    //    }).fail(function (error) {
-    //        logger.error("Load data error. Try later.");
-    //        logger.log(error);
-    //    });
-    //};
-
     function loadData(query) {
         return manager.executeQuery(query);
     }
     function  getRoutes(){
-        return manager.executeQueryLocally(queries[0].query);
+        return manager.executeQueryLocally(queries.Routes.query);
+    };
+    function getCustomers() {
+        return manager.executeQueryLocally(queries.Customers.query);
     };
 
     var dataservice =  {
@@ -64,6 +53,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         queries: queries,
         loadData: loadData,
         getRoutes: getRoutes,
+        getCustomers: getCustomers,
         //clearUserData: clearUserData,
 
     };

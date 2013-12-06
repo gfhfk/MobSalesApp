@@ -1,5 +1,6 @@
 ﻿<div data-options="dxView : { name: 'Settings', title: 'Settings' } ">
     <div data-options="dxContent : { targetPlaceholder: 'content' } ">
+        <div data-bind="dxLoadPanel: { message: 'Loading...', visible: loading().lenght>0 }"></div>
         <div data-bind="dxList: { items: entityList }">
             <div data-options="dxTemplate : { name: 'item' }">
                 <div data-bind="text: $data.name" class="entity-name"> </div>

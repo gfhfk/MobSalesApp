@@ -9,6 +9,7 @@ MobileSales.Settings = function (params) {
         loading: ko.observableArray(),
         viewShowing: getEntities,
 
+
     };
     function getEntities() {
         var mapped = $.map(app.dataservice.queries, function (item) {
