@@ -50,8 +50,9 @@ $(function () {
         regexp = new RegExp("^(" + pattern.join("|") + ")$");
         return regexp.test(uri);
     }
-    function startApp() {
-  
+    function startApp(needToSynchronize) {
+        if (needToSynchronize)
+            ms.app.navigate("Settings");
         ms.app.navigate();
     }
     function onNavigate(args) {
@@ -75,8 +76,8 @@ $(function () {
         if (currentBackAction) {
             currentBackAction();
         } else {
-            if (wo.app.canBack()) {
-                wo.app.back();
+            if (ms.app.canBack()) {
+                ms.app.back();
             }
             else {
                 if (confirm("Are you sure you want to exit?")) {
@@ -97,20 +98,19 @@ $(function () {
     }
     function onDeviceReady() {
         document.addEventListener("backbutton", onBackButton, false);
-        //document.addEventListener("pause", wo.saveCurrentWorkout, false);
+        document.addEventListener("pause", window.MobileSales.dataservice.saveDataLocally, false);
         navigator.splashscreen.hide();
     }
 
     $(function () {
         FastClick.attach(document.body);
         app = ms.app = new DevExpress.framework.html.HtmlApplication(APP_SETTINGS);
-        app.router.register(":view/:item", { view: "Settings", item: undefined });
+        app.router.register(":view/:item", { view: "Home", item: undefined });
         ms.app.viewShown.add(onViewShown);
         ms.app.navigationManager.navigating.add(onNavigate);
 
-       
-        ms.dataservice.initUserData();
-        startApp();
+      
+        startApp(ms.dataservice.initUserData());
 
         setTimeout(function () {
             document.addEventListener("deviceready", onDeviceReady, false);
@@ -124,5 +124,5 @@ $(function () {
             }
         }, 1000);
     });
-
+   
 });

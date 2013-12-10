@@ -1,14 +1,18 @@
 ﻿/// <reference path="../Scripts/_references.js" />
 MobileSales.Settings = function (params) {
     var app = MobileSales,
-        
+        needToSynchonize = params.item,
         self = this;
 
     var vm = {
         entityList: ko.observableArray([]),
         loading: ko.observableArray(),
-        viewShowing: getEntities,
-      
+        viewShowing: function () {
+        },
+        viewShown: function () {
+            $(".dx-active-view .dx-scrollable").data("dxScrollView").scrollTo(0);
+        },
+        synchData: getEntities,
 
     };
 
@@ -25,10 +29,13 @@ MobileSales.Settings = function (params) {
                 item.status("Succeded");
                 app.logger.log(app.dataservice.getRoutes());
                 vm.loading.pop();
+                if (vm.loading().length === 0)
+                    app.dataservice.saveDataLocally();
             }).fail(function (error) {
                 item.status("Error");
-                vm.loading.pop();
+                app.logger.error("Error Loading data");
                 app.logger.log(error);
+                vm.loading.pop();
             });
             return item;
         });

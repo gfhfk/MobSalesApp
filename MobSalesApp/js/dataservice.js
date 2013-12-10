@@ -45,7 +45,11 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
     function getCustomers() {
         return manager.executeQueryLocally(queries.Customers.query);
     };
-
+    
+    function saveDataLocally() {
+        var exportData = manager.exportEntities();
+        localStorage.setItem(DATA_KEY, exportData);
+    }
     var dataservice =  {
         manager: manager,
         metadataStore: manager.metadataStore,
@@ -54,6 +58,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         loadData: loadData,
         getRoutes: getRoutes,
         getCustomers: getCustomers,
+        saveDataLocally: saveDataLocally,
         //clearUserData: clearUserData,
 
     };
