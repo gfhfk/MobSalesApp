@@ -4,7 +4,7 @@
         VIEW_OFFSET = 40,
         NAVIGATION_MAX_WIDTH = 300,
         NAVIGATION_TOGGLE_DURATION = 400;
-    DX.framework.html.SlideOutController = DX.framework.html.OneFrameLayoutController.inherit({
+    DX.framework.html.SlideOutController = DX.framework.html.DefaultLayoutController.inherit({
         _getLayoutTemplateName: function() {
             return "slideout"
         },
@@ -22,6 +22,7 @@
         },
         init: function(options) {
             this.callBase(options);
+            this._navigationManager = options.navigationManager;
             this._navigatingHandler = $.proxy(this._onNavigating, this)
         },
         activate: function() {
@@ -34,7 +35,7 @@
         },
         _onNavigating: function(args) {
             var self = this;
-            if (this.slideOut._menuShown)
+            if (this.slideOut.option("menuVisible"))
                 args.navigateWhen.push(this._toggleNavigation().done(function() {
                     self._disableTransitions = true
                 }))
@@ -47,7 +48,7 @@
             var toolbar = $markup.find(".layout-toolbar").data("dxToolbar");
             var items = toolbar.option("items");
             var backCommands = $.grep(items, function(item) {
-                    return item.behavior === "back" || item.id === "back"
+                    return (item.behavior === "back" || item.id === "back") && item.visible === true
                 });
             return !backCommands.length
         },
@@ -56,8 +57,8 @@
             self._initNavigation(viewInfo.renderResult.$markup);
             if (self._isPlaceholderEmpty(viewInfo))
                 self._initNavigationButton(viewInfo.renderResult.$markup);
-            var $appbar = viewInfo.renderResult.$markup.find(".layout-toolbar-bottom"),
-                $content = viewInfo.renderResult.$markup.find(".layout-content"),
+            var $content = viewInfo.renderResult.$markup.find(".layout-content"),
+                $appbar = viewInfo.renderResult.$markup.find(".layout-toolbar-bottom"),
                 appbar = $appbar.data("dxToolbar");
             if (appbar) {
                 self._refreshAppbarVisibility(appbar, $content);
@@ -96,45 +97,35 @@
             })
         },
         _initNavigation: function($markup) {
-            this._isNavigationVisible = false;
-            this._initToolbar($markup)
-        },
-        _initToolbar: function($markup) {
-            var $layoutFooter = $markup.find(".layout-toolbar-bottom.win8");
-            if (!$layoutFooter.data("__inited")) {
-                $layoutFooter.data("__inited", true);
-                $layoutFooter.click(function() {
-                    if ($layoutFooter.get(0) === event.srcElement)
-                        $(this).toggleClass("semi-hidden")
-                })
-            }
+            this._isNavigationVisible = false
         },
         _toggleNavigation: function($markup) {
             return this.slideOut.toggleMenuVisibility()
         }
     });
     DX.framework.html.layoutControllers.push({
-        name: "slideout",
+        navigationType: "slideout",
         platform: "ios",
         controller: new DX.framework.html.SlideOutController
     });
     DX.framework.html.layoutControllers.push({
-        name: "slideout",
+        navigationType: "slideout",
         platform: "android",
         controller: new DX.framework.html.SlideOutController
     });
     DX.framework.html.layoutControllers.push({
-        name: "slideout",
+        navigationType: "slideout",
         platform: "tizen",
         controller: new DX.framework.html.SlideOutController
     });
     DX.framework.html.layoutControllers.push({
-        name: "slideout",
+        navigationType: "slideout",
         platform: "win8",
+        phone: true,
         controller: new DX.framework.html.SlideOutController
     });
     DX.framework.html.layoutControllers.push({
-        name: "slideout",
+        navigationType: "slideout",
         platform: "generic",
         controller: new DX.framework.html.SlideOutController
     })

@@ -1,4 +1,4 @@
-﻿<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'ios', controller: 'navbar' } " >
+﻿<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'ios' } " >
     <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header">
             <div data-bind="dxToolbar: { items: [ { text: title, align: 'center' } ] }" 
@@ -7,8 +7,8 @@
         </div>
 
         <div class="layout-content dx-ios-stripes" data-options="dxContentPlaceholder : { name: 'content' }">
-            <div>
-                <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-options="dxLoadIndicator: { visible: true }"></div>
             </div>
         </div>
     </div>
@@ -24,7 +24,7 @@
 
 </div>
 
-<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'android', controller: 'navbar' } " >
+<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'android' } " >
 
     <div class="layout-header">
         <div class="navbar-container">
@@ -32,19 +32,18 @@
     </div>
 
     <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
-        <div>
-            <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
+        <div class="dx-loadindicator-container">
+            <div data-options="dxLoadIndicator: { visible: true }"></div>
         </div>
     </div>
 
     <div class="layout-footer" data-options="dxContentPlaceholder: { name: 'footer' } ">
-        <div data-options="dxToolbar: { visible: false }, dxCommandContainer : { id: 'android-footer-toolbar' } ">
-        </div>
+        <div data-options="dxToolbar: { visible: false }, dxCommandContainer : { id: 'android-footer-toolbar' } "></div>
     </div>
 
 </div>
 
-<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'tizen', controller: 'navbar' } " >
+<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'tizen' } " >
 
     <div class="layout-header" >
         <div class="navbar-container">
@@ -52,8 +51,8 @@
     </div>
 
     <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', transition: 'slide' }">
-        <div>
-            <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
+        <div class="dx-loadindicator-container">
+            <div data-options="dxLoadIndicator: { visible: true }"></div>
         </div>
     </div>
 
@@ -64,7 +63,7 @@
 
 </div>
 
-<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'generic', controller: 'navbar' } " >
+<div class="navbar-layout" data-options="dxLayout : { name: 'navbar', platform: 'generic' } " >
 
     <div class="transition-frame" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header">
@@ -74,8 +73,8 @@
         </div>
 
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' }">
-            <div>
-                <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-options="dxLoadIndicator: { visible: true }"></div>
             </div>
         </div>
     </div>
@@ -100,25 +99,9 @@
     </div>
     <div class="layout-content-wrapper">
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content', contentCssPosition: 'static' }">
-            <div>
-                <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-options="dxLoadIndicator: { visible: true }"></div>
             </div>
         </div>
     </div>
 </div>
-
-<div class="navbar-layout-phone" data-options="dxLayout : { name: 'navbar', platform: 'win8', phone: true, controller: 'pivot' }">
-
-    <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' }">
-        <div>
-            <div class="load-panel" data-options="dxLoadIndicator: { visible: true }"></div>
-        </div>
-    </div>
-
-    <div class="layout-footer" data-options="dxContentPlaceholder : { name: 'footer' }">
-        <div data-options="dxToolbar: { items: [] }, dxCommandContainer : { id: 'win8-phone-appbar' }" class="layout-toolbar-bottom win8 semi-hidden">
-        </div>
-    </div>
-
-</div>
-

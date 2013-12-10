@@ -13,6 +13,7 @@
         },
         init: function(options) {
             this.callBase(options);
+            this._navigationManager = options.navigationManager;
             this._eventHelper.init()
         },
         _getLayoutTemplateName: function() {
@@ -33,9 +34,12 @@
                     self._commandManager._arrangeCommandsToContainers(viewInfo.commands, [self._appbarCommandContainer])
             })
         },
+        _getTargetFrame: function(viewInfo) {
+            return (viewInfo.viewTemplateInfo || {}).targetFrame || (viewInfo.routeData || {}).placeholder || this.callBase(viewInfo)
+        },
         _prepareViewTemplate: function($viewTemplate, viewInfo) {
             this.callBase($viewTemplate, viewInfo);
-            $viewTemplate.find(".dx-content-content").dxContent({targetPlaceholder: viewInfo.routeData.placeholder || "content"})
+            $viewTemplate.find(".dx-content-content").dxContent({targetPlaceholder: this._getTargetFrame(viewInfo)})
         },
         _renderView: function($viewTemplate, viewInfo) {
             var self = this;
@@ -136,7 +140,7 @@
             }
         });
     DX.framework.html.layoutControllers.push({
-        name: 'split',
+        navigationType: 'split',
         root: false,
         controller: new DX.framework.html.SplitLayoutController
     })

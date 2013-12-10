@@ -1,7 +1,7 @@
 /*! 
 * DevExpress PhoneJS
-* Version: 13.2.3
-* Build date: Nov 18, 2013
+* Version: 13.2.5
+* Build date: Dec 3, 2013
 *
 * Copyright (c) 2012 - 2013 Developer Express Inc. ALL RIGHTS RESERVED
 * EULA: http://phonejs.devexpress.com/EULA
@@ -180,11 +180,17 @@ if (!window.DevExpress) {
                             if (result)
                                 callback();
                             return result
+                        },
+                        hasCallback: function() {
+                            return callbacks.length > 0
+                        },
+                        reset: function() {
+                            callbacks = []
                         }
                     }
             }();
         var overlayTargetContainer = function() {
-                var defaultTargetContainer = ".dx-viewport";
+                var defaultTargetContainer = "body";
                 return function(targetContainer) {
                         if (arguments.length)
                             defaultTargetContainer = targetContainer;
@@ -603,7 +609,8 @@ if (!window.DevExpress) {
                     this._context = config.context || window;
                     this._beforeExecute = config.beforeExecute || $.noop;
                     this._afterExecute = config.afterExecute || $.noop;
-                    this._component = config.component
+                    this._component = config.component;
+                    this._excludeValidators = config.excludeValidators
                 },
                 execute: function() {
                     var e = {
@@ -624,7 +631,10 @@ if (!window.DevExpress) {
                     return result
                 },
                 _validateAction: function(e) {
-                    $.each(actionExecutors, function(index, executor) {
+                    var excludeValidators = this._excludeValidators;
+                    $.each(actionExecutors, function(name, executor) {
+                        if (excludeValidators && $.inArray(name, excludeValidators) > -1)
+                            return;
                         if (executor.validate)
                             executor.validate(e);
                         if (e.canceled)
@@ -759,6 +769,12 @@ if (!window.DevExpress) {
                 });
                 differences.count = counter;
                 return differences
+            };
+        var sameMonthAndYear = function(date1, date2) {
+                return date1 && date2 && date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth()
+            };
+        var getFirstMonthDate = function(date) {
+                return new Date(date.getFullYear(), date.getMonth(), 1)
             };
         var getFraction = function(value) {
                 var valueString,
@@ -1194,11 +1210,12 @@ if (!window.DevExpress) {
                 }
                 return result
             };
-        var findBestMatch = function(targetFilter, items) {
-                var result = null,
+        var findBestMatches = function(targetFilter, items, mapFn) {
+                var bestMatches = [],
                     maxMatchCount = 0;
-                $.each(items, function(index, item) {
-                    var matchCount = 0;
+                $.each(items, function(index, itemSrc) {
+                    var matchCount = 0,
+                        item = mapFn ? mapFn(itemSrc) : itemSrc;
                     $.each(item, function(paramName) {
                         var value = targetFilter[paramName];
                         if (value !== item[paramName] && value !== undefined) {
@@ -1208,12 +1225,15 @@ if (!window.DevExpress) {
                         else
                             matchCount++
                     });
-                    if (matchCount > maxMatchCount) {
-                        result = item;
+                    if (matchCount === maxMatchCount && matchCount > 0)
+                        bestMatches.push(itemSrc);
+                    else if (matchCount > maxMatchCount) {
+                        bestMatches.length = 0;
+                        bestMatches.push(itemSrc);
                         maxMatchCount = matchCount
                     }
                 });
-                return result
+                return bestMatches
             };
         var preg_quote = function(str) {
                 return (str + "").replace(/([\+\*\?\\\.\[\^\]\$\(\)\{\}\>\<\|\=\!\:])/g, "\\$1")
@@ -1229,6 +1249,21 @@ if (!window.DevExpress) {
                     return icontains(elem, text)
                 }
         });
+        function deepExtendArraySafe(target, changes) {
+            var prevValue,
+                newValue;
+            for (var name in changes) {
+                prevValue = target[name];
+                newValue = changes[name];
+                if (target === newValue)
+                    continue;
+                if ($.isPlainObject(newValue))
+                    target[name] = deepExtendArraySafe($.isPlainObject(prevValue) ? prevValue : {}, newValue);
+                else if (newValue !== undefined)
+                    target[name] = newValue
+            }
+            return target
+        }
         DX.utils = {
             dateUnitIntervals: dateUnitIntervals,
             isDefined: isDefined,
@@ -1260,6 +1295,8 @@ if (!window.DevExpress) {
             getSignificantDigitPosition: getSignificantDigitPosition,
             addInterval: addInterval,
             getDateIntervalByString: getDateIntervalByString,
+            sameMonthAndYear: sameMonthAndYear,
+            getFirstMonthDate: getFirstMonthDate,
             logger: logger,
             debug: debug,
             createResizeHandler: createResizeHandler,
@@ -1273,8 +1310,9 @@ if (!window.DevExpress) {
             executeAsync: executeAsync,
             stringFormat: stringFormat,
             getRootOffset: getRootOffset,
-            findBestMatch: findBestMatch,
-            replaceAll: replaceAll
+            findBestMatches: findBestMatches,
+            replaceAll: replaceAll,
+            deepExtendArraySafe: deepExtendArraySafe
         };
         DX.utils.getPrecision = getPrecision
     })(jQuery, DevExpress);
@@ -1416,8 +1454,7 @@ if (!window.DevExpress) {
                 win8Phone: "Windows Phone 8",
                 msSurface: "MSIE ARM Tablet PC",
                 desktop: "desktop",
-                tizen: "Tizen Mobile",
-                generic: "generic"
+                tizen: "Tizen Mobile"
             };
         var knownMajorVersion = {
                 ios: [5, 6, 7],
@@ -1450,6 +1487,12 @@ if (!window.DevExpress) {
                 }
             };
         var getDevice = function(deviceName) {
+                if (deviceName === "genericPhone")
+                    return {
+                            deviceType: "phone",
+                            platform: "generic",
+                            generic: true
+                        };
                 if ($.isPlainObject(deviceName))
                     return fromConfig(deviceName);
                 else {
@@ -1493,7 +1536,8 @@ if (!window.DevExpress) {
             };
         var genericDevice = $.extend(defaultDevice, {
                 platform: "generic",
-                deviceType: "phone"
+                deviceType: "phone",
+                generic: true
             });
         var deviceParser = {
                 ios: function(userAgent) {
@@ -2784,6 +2828,8 @@ if (!window.DevExpress) {
                         localizeNode: function(node) {
                             var self = this;
                             $(node).each(function(index, nodeItem) {
+                                if (!nodeItem.nodeType)
+                                    return;
                                 if (nodeItem.nodeType === 3)
                                     nodeItem.nodeValue = self.localizeString(nodeItem.nodeValue);
                                 else {
@@ -2846,7 +2892,14 @@ if (!window.DevExpress) {
         var isObservable = function(value) {
                 return HAS_KO && ko.isObservable(value)
             };
-        var assign = function(obj, propName, value) {
+        var readPropValue = function(obj, propName) {
+                if (propName === "this")
+                    return obj;
+                return obj[propName]
+            };
+        var assignPropValue = function(obj, propName, value) {
+                if (propName === "this")
+                    throw Error("Cannot assign to self");
                 var propValue = obj[propName];
                 if (isObservable(propValue))
                     propValue(value);
@@ -2905,43 +2958,27 @@ if (!window.DevExpress) {
                         return result
                     }
             };
-        function deepExtendArraySafe(target, changes) {
-            var prevValue,
-                newValue;
-            for (var name in changes) {
-                prevValue = target[name];
-                newValue = changes[name];
-                if (target === newValue)
-                    continue;
-                if ($.isPlainObject(newValue))
-                    target[name] = deepExtendArraySafe($.isPlainObject(prevValue) ? prevValue : {}, newValue);
-                else if (newValue !== undefined)
-                    target[name] = newValue
-            }
-            return target
-        }
         var compileSetter = function(expr) {
-                if (!expr || expr === "this")
-                    throw Error("Cannot assign to self");
+                expr = expr || "this";
                 expr = bracketsToDots(expr);
                 var pos = expr.lastIndexOf("."),
                     targetGetter = compileGetter(expr.substr(0, pos)),
-                    targetExpr = expr.substr(1 + pos);
+                    targetPropName = expr.substr(1 + pos);
                 return function(obj, value, options) {
                         options = options || {};
                         var target = targetGetter(obj, {functionsAsIs: options.functionsAsIs}),
-                            prevTargetValue = target[targetExpr];
+                            prevTargetValue = readPropValue(target, targetPropName);
                         if (!options.functionsAsIs && $.isFunction(prevTargetValue) && !isObservable(prevTargetValue))
-                            target[targetExpr](value);
+                            target[targetPropName](value);
                         else {
                             prevTargetValue = unwrapObservable(prevTargetValue);
                             if (options.merge && $.isPlainObject(value) && (prevTargetValue === undefined || $.isPlainObject(prevTargetValue))) {
                                 if (!prevTargetValue)
-                                    assign(target, targetExpr, {});
-                                deepExtendArraySafe(unwrapObservable(target[targetExpr]), value)
+                                    assignPropValue(target, targetPropName, {});
+                                DX.utils.deepExtendArraySafe(unwrapObservable(readPropValue(target, targetPropName)), value)
                             }
                             else
-                                assign(target, targetExpr, value)
+                                assignPropValue(target, targetPropName, value)
                         }
                     }
             };
@@ -2953,7 +2990,7 @@ if (!window.DevExpress) {
                     info = [info];
                 return $.map(info, function(i) {
                         return {
-                                selector: $.isFunction(i) || typeof i === "string" ? i : i.field || i.selector,
+                                selector: $.isFunction(i) || typeof i === "string" ? i : i.getter || i.field || i.selector,
                                 desc: !!(i.desc || String(i.dir).charAt(0).toLowerCase() === "d")
                             }
                     })
@@ -3288,6 +3325,7 @@ if (!window.DevExpress) {
                                         return toComparable(toString(getter(obj))).indexOf(value) === -1
                                     }
                         }
+                        throw Error("Unknown filter operation: " + op);
                     };
                 return function(crit) {
                         if ($.isFunction(crit))
@@ -3832,7 +3870,11 @@ if (!window.DevExpress) {
                     };
                 var compileBinary = function(criteria, bag) {
                         criteria = data.utils.normalizeBinaryCriterion(criteria);
-                        formatters[criteria[1]](serializePropName(criteria[0]), serializeValue(criteria[2]), bag)
+                        var op = criteria[1],
+                            formatter = formatters[op.toLowerCase()];
+                        if (!formatter)
+                            throw Error("Unknown filter operation: " + op);
+                        formatter(serializePropName(criteria[0]), serializeValue(criteria[2]), bag)
                     };
                 var compileGroup = function(criteria, bag) {
                         var pushAnd = false;
@@ -4171,7 +4213,7 @@ if (!window.DevExpress) {
                 }
                 else
                     target = key;
-                $.extend(true, target, values);
+                DX.utils.deepExtendArraySafe(target, values);
                 return trivialPromise(key, values)
             },
             _removeImpl: function(key) {
@@ -5253,6 +5295,7 @@ if (!window.DevExpress) {
                 var device = DX.devices.real;
                 var allowZoom = options.allowZoom,
                     allowPan = options.allowPan;
+                DX.overlayTargetContainer(".dx-viewport");
                 var metaSelector = "meta[name=viewport]";
                 if (!$(metaSelector).length)
                     $("<meta />").attr("name", "viewport").appendTo("head");
@@ -5279,7 +5322,7 @@ if (!window.DevExpress) {
                             e.preventDefault()
                     });
                 if (navigator.userAgent.match(/IEMobile\/10\.0/)) {
-                    $(document.head).append($("<style/>").text("@-ms-viewport{ width:auto!important; user-zoom: fixed; max-zoom: 1; min-zoom: 1; }"));
+                    $(document.head).append($("<style/>").text("@-ms-viewport{ width: auto!important; user-zoom: fixed; max-zoom: 1; min-zoom: 1; }"));
                     $(window).bind("load resize", function(e) {
                         var TOP_BAR_W = 44,
                             TOP_BAR_H = 21,
@@ -5290,58 +5333,6 @@ if (!window.DevExpress) {
                         var actualHeight = $(window).width() < $(window).height() ? Math.round(screen.availHeight * (document.body.clientWidth / screen.availWidth)) - barHeight : Math.round(screen.availWidth * (document.body.clientHeight / screen.availHeight)) - barWidth;
                         document.body.style.setProperty("min-height", actualHeight + "px", "important")
                     })
-                }
-                var hideAddressBar = function() {
-                        var ADDRESS_BAR_HEIGHT = 60,
-                            isIphone = device.phone,
-                            isSafari = !navigator.standalone && /safari/i.test(navigator.userAgent) && !/crios/i.test(navigator.userAgent);
-                        var doHide = function() {
-                                window.scrollTo(0, 1)
-                            };
-                        var isInput = function($who) {
-                                return $who.is(":input")
-                            };
-                        return function(e) {
-                                var height,
-                                    $target = $(e.target),
-                                    $active = $(document.activeElement),
-                                    isTouch = e.type === "touchstart";
-                                if (isTouch) {
-                                    if (isInput($target))
-                                        return;
-                                    if (isInput($active))
-                                        $active.blur()
-                                }
-                                else if (isInput($active))
-                                    return;
-                                if (isIphone && isSafari) {
-                                    height = $(window).height() + ADDRESS_BAR_HEIGHT;
-                                    if ($(document.body).height() !== height)
-                                        $(document.body).height(height)
-                                }
-                                doHide()
-                            }
-                    }();
-                if (isNeedToHideAddressBar()) {
-                    $(window).on("load touchstart orientationchange", hideAddressBar);
-                    $(function() {
-                        $(document.body).on("focusout", function() {
-                            var fix_Q477825 = window.pageYOffset
-                        })
-                    })
-                }
-                function isNeedToHideAddressBar() {
-                    var inFrame = top != self,
-                        isApp = !/http|https/i.test(window.location.protocol),
-                        isIOS = device.ios,
-                        isIOS7 = isIOS && device.version[0] === 7;
-                    if (isApp)
-                        return false;
-                    if (inFrame)
-                        return false;
-                    if (isIOS7)
-                        return false;
-                    return isIOS
                 }
             };
         var TemplateProvider = DX.Class.inherit({
@@ -5368,7 +5359,7 @@ if (!window.DevExpress) {
             });
         DX.registerActionExecutor({
             designMode: {validate: function(e) {
-                    if (DX.designMode && !(e.context === ui.dxScrollable) && !(ui.dxScrollable && e.context instanceof ui.dxScrollable) && !(ui.dxScrollView && e.context instanceof ui.dxScrollView))
+                    if (DX.designMode)
                         e.canceled = true
                 }},
             gesture: {validate: function(e) {
@@ -5376,8 +5367,6 @@ if (!window.DevExpress) {
                         return;
                     var args = e.args[0],
                         element = args.itemElement || args.element;
-                    if (args.isGesture)
-                        return;
                     while (element && element.length) {
                         if (element.data("dxGesture")) {
                             e.canceled = true;
@@ -5391,8 +5380,6 @@ if (!window.DevExpress) {
                         return;
                     var args = e.args[0],
                         element = args.itemElement || args.element;
-                    if (args.isDisabledResistant)
-                        return;
                     if (element && element.is(".dx-state-disabled, .dx-state-disabled *"))
                         e.canceled = true
                 }}
@@ -5441,6 +5428,24 @@ if (!window.DevExpress) {
                         },
                         contentReadyAction: function() {
                             popupInstance.content().addClass(DX_DIALOG_CONTENT_CLASSNAME).append($message).append($buttons)
+                        },
+                        animation: {
+                            show: {
+                                type: "pop",
+                                duration: 400
+                            },
+                            hide: {
+                                type: "pop",
+                                duration: 400,
+                                to: {
+                                    opacity: 0,
+                                    scale: 0
+                                },
+                                from: {
+                                    opacity: 1,
+                                    scale: 1
+                                }
+                            }
                         }
                     }).data("dxPopup");
                 popupInstance._wrapper().addClass(DX_DIALOG_WRAPPER_CLASSNAME);
@@ -5648,12 +5653,6 @@ if (!window.DevExpress) {
                 if (typeof eventNames === "string")
                     return addNamespace(eventNames.split(/\s+/g), namespace);
                 $.each(eventNames, function(index, eventName) {
-                    if (/^(start|move|end|cancel)$/.test(eventName))
-                        throw Error("Use DX Pointer Event instead of '" + eventName + "'");
-                    if (eventName === "wheel")
-                        throw Error("Use 'mousewheel' instead of 'wheel' event");
-                    if (eventName === "click")
-                        throw Error("Use 'dxclick' instead of 'click' event");
                     eventNames[index] = eventName + "." + namespace
                 });
                 return eventNames.join(" ")
@@ -5847,14 +5846,14 @@ if (!window.DevExpress) {
             CLICK_DATA_KEY = EVENTS_NAME_SPACE + "." + CLICK_NAME_SPACE,
             SCROLLABLE_PARENT_DATA_KEY = "dxClickScrollableParent",
             SCROLLABLE_PARENT_SCROLL_OFFSET_DATA_KEY = "dxClickScrollableParentOffset";
-        var click = jqSpecialEvent[CLICK_EVENT_NAME] = {
+        var SimulatedStrategy = {
                 TOUCH_BOUNDARY: 10,
                 _startX: 0,
                 _startY: 0,
                 _handlerCount: 0,
                 _touchWasMoved: function(e) {
-                    var boundary = click.TOUCH_BOUNDARY;
-                    return Math.abs(e.pageX - click._startX) > boundary || Math.abs(e.pageY - click._startY) > boundary
+                    var boundary = SimulatedStrategy.TOUCH_BOUNDARY;
+                    return Math.abs(e.pageX - SimulatedStrategy._startX) > boundary || Math.abs(e.pageY - SimulatedStrategy._startY) > boundary
                 },
                 _getClosestScrollable: function($element) {
                     var $scrollParent = $();
@@ -5874,7 +5873,7 @@ if (!window.DevExpress) {
                     return $scrollParent
                 },
                 _saveClosestScrollableOffset: function($element) {
-                    var $scrollable = click._getClosestScrollable($element);
+                    var $scrollable = SimulatedStrategy._getClosestScrollable($element);
                     if ($scrollable.length)
                         $element.data(SCROLLABLE_PARENT_SCROLL_OFFSET_DATA_KEY, $scrollable.scrollTop())
                 },
@@ -5886,20 +5885,20 @@ if (!window.DevExpress) {
                     if (events.isMouseEvent(e) && e.which !== 1)
                         return;
                     $(e.currentTarget).data(CLICK_DATA_KEY).trackingClick = true;
-                    click._saveClosestScrollableOffset($(e.target));
-                    click._startX = e.pageX;
-                    click._startY = e.pageY
+                    SimulatedStrategy._saveClosestScrollableOffset($(e.target));
+                    SimulatedStrategy._startX = e.pageX;
+                    SimulatedStrategy._startY = e.pageY
                 },
                 _handleEnd: function(e) {
                     var data = $(e.currentTarget).data(CLICK_DATA_KEY);
-                    if (click._touchWasMoved(e)) {
+                    if (SimulatedStrategy._touchWasMoved(e)) {
                         data.trackingClick = false;
                         return
                     }
                     if (!data.trackingClick)
                         return;
                     data.trackingClick = false;
-                    if (click._closestScrollableWasMoved($(e.target)))
+                    if (SimulatedStrategy._closestScrollableWasMoved($(e.target)))
                         return;
                     events.fireEvent({
                         type: CLICK_EVENT_NAME,
@@ -5910,22 +5909,32 @@ if (!window.DevExpress) {
                     $(e.currentTarget).data(CLICK_DATA_KEY).trackingClick = false
                 },
                 setup: function() {
-                    if (click._handlerCount > 0)
+                    if (SimulatedStrategy._handlerCount > 0)
                         return;
-                    $(document).data(CLICK_DATA_KEY, {}).on(events.addNamespace("dxpointerdown", CLICK_NAME_SPACE), $.proxy(click._handleStart, this)).on(events.addNamespace("dxpointerup", CLICK_NAME_SPACE), $.proxy(click._handleEnd, this)).on(events.addNamespace("dxpointercancel", CLICK_NAME_SPACE), $.proxy(click._handleCancel, this))
+                    $(document).data(CLICK_DATA_KEY, {}).on(events.addNamespace("dxpointerdown", CLICK_NAME_SPACE), $.proxy(SimulatedStrategy._handleStart, this)).on(events.addNamespace("dxpointerup", CLICK_NAME_SPACE), $.proxy(SimulatedStrategy._handleEnd, this)).on(events.addNamespace("dxpointercancel", CLICK_NAME_SPACE), $.proxy(SimulatedStrategy._handleCancel, this))
                 },
                 add: function() {
-                    click._handlerCount++
+                    SimulatedStrategy._handlerCount++
                 },
                 remove: function() {
-                    click._handlerCount--
+                    SimulatedStrategy._handlerCount--
                 },
                 teardown: function() {
-                    if (click._handlerCount)
+                    if (SimulatedStrategy._handlerCount)
                         return;
                     $(document).off("." + CLICK_NAME_SPACE).removeData(CLICK_DATA_KEY)
                 }
-            }
+            };
+        var NativeStrategy = {
+                bindType: "click",
+                delegateType: "click"
+            };
+        jqSpecialEvent[CLICK_EVENT_NAME] = NativeStrategy;
+        DX.ui.events.__internals = DX.ui.events.__internals || {};
+        $.extend(DX.ui.events.__internals, {
+            NativeClickStrategy: NativeStrategy,
+            SimulatedClickStrategy: SimulatedStrategy
+        })
     })(jQuery, DevExpress);
     /*! Module core, file ui.events.hold.js */
     (function($, DX, undefined) {
@@ -5938,12 +5947,21 @@ if (!window.DevExpress) {
             HOLD_TIMER_DATA_KEY = EVENTS_NAME_SPACE + "HoldTimer";
         var hold = jqSpecialEvent[HOLD_EVENT_NAME] = {
                 HOLD_TIMEOUT: 750,
+                TOUCH_BOUNDARY: 10,
+                _startX: 0,
+                _startY: 0,
+                _touchWasMoved: function(e) {
+                    var boundary = hold.TOUCH_BOUNDARY;
+                    return Math.abs(e.pageX - hold._startX) > boundary || Math.abs(e.pageY - hold._startY) > boundary
+                },
                 setup: function(data) {
                     var element = this,
                         $element = $(element);
                     var handleStart = function(e) {
                             if ($element.data(HOLD_TIMER_DATA_KEY))
                                 return;
+                            hold._startX = e.pageX;
+                            hold._startY = e.pageY;
                             $element.data(HOLD_TIMER_DATA_KEY, setTimeout(function() {
                                 $element.removeData(HOLD_TIMER_DATA_KEY);
                                 events.fireEvent({
@@ -5952,11 +5970,16 @@ if (!window.DevExpress) {
                                 })
                             }, data && "timeout" in data ? data.timeout : hold.HOLD_TIMEOUT))
                         };
+                    var handleMove = function(e) {
+                            if (!hold._touchWasMoved(e))
+                                return;
+                            handleEnd()
+                        };
                     var handleEnd = function() {
                             clearTimeout($element.data(HOLD_TIMER_DATA_KEY));
                             $element.removeData(HOLD_TIMER_DATA_KEY)
                         };
-                    $element.on(events.addNamespace("dxpointerdown", HOLD_NAME_SPACE), handleStart).on(events.addNamespace("dxpointerup", HOLD_NAME_SPACE), handleEnd)
+                    $element.on(events.addNamespace("dxpointerdown", HOLD_NAME_SPACE), handleStart).on(events.addNamespace("dxpointermove", HOLD_NAME_SPACE), handleMove).on(events.addNamespace("dxpointerup", HOLD_NAME_SPACE), handleEnd)
                 },
                 teardown: function() {
                     var $element = $(this);
@@ -6061,14 +6084,15 @@ if (!window.DevExpress) {
                     var activeSwipeable = this._activeSwipeable = this._closestSwipeable(e);
                     if (!activeSwipeable)
                         return;
+                    this._parentsLength = this._activeSwipeable.parents().length;
                     this._startEventData = events.eventData(e);
                     this._tickData = {time: 0};
                     this._swipeStage = this.STAGE_TOUCHED;
-                    if (events.isMouseEvent(e))
-                        if (this._data("forceBlur")) {
+                    if (events.isMouseEvent(e)) {
+                        if ($(":focus", activeSwipeable).length)
                             utils.resetActiveElement();
-                            e.preventDefault()
-                        }
+                        e.preventDefault()
+                    }
                 },
                 _handleMove: function(e) {
                     if (!this._activeSwipeable || this._swipeStage === this.STAGE_SLEEP)
@@ -6086,9 +6110,11 @@ if (!window.DevExpress) {
                         this._reset();
                         return
                     }
+                    var direction = this._data("direction");
+                    if (e.originalEvent.pointerMoveData[direction] !== this._parentsLength)
+                        return;
+                    e.originalEvent.isScrollingEvent = false;
                     this._activeSwipeable.data(GESTURE_LOCK_KEY, true);
-                    if (this._data("forceBlur"))
-                        utils.resetActiveElement();
                     e = events.fireEvent({
                         type: "dxswipestart",
                         originalEvent: e,
@@ -6108,6 +6134,19 @@ if (!window.DevExpress) {
                     this._maxTopOffset = e.maxTopOffset;
                     this._maxBottomOffset = e.maxBottomOffset;
                     this._swipeStage = this.STAGE_SWIPING
+                },
+                _handleBodyPointerMove: function(e) {
+                    if (!this._activeSwipeable || !e.originalEvent)
+                        return;
+                    var pointerMoveData = e.originalEvent.pointerMoveData || {},
+                        direction = this._data("direction"),
+                        directionValue = pointerMoveData[direction];
+                    if (directionValue && directionValue > this._parentsLength) {
+                        this._reset();
+                        return
+                    }
+                    pointerMoveData[direction] = this._parentsLength;
+                    e.originalEvent.pointerMoveData = pointerMoveData
                 },
                 _handleNextMoves: function(e) {
                     var strategy = this._getStrategy(),
@@ -6172,6 +6211,7 @@ if (!window.DevExpress) {
                     this._swipeStage = this.STAGE_SLEEP
                 },
                 _attachEvents: function() {
+                    $("body").on(events.addNamespace("dxpointermove", "dxSwipe"), $.proxy(this._handleBodyPointerMove, this));
                     $(document).on(events.addNamespace("dxpointerdown", "dxSwipe"), $.proxy(this._handleStart, this)).on(events.addNamespace("dxpointermove", "dxSwipe"), $.proxy(this._handleMove, this)).on(events.addNamespace("dxpointerup", "dxSwipe"), $.proxy(this._handleEnd, this))
                 },
                 isDisposed: function() {
@@ -6191,8 +6231,7 @@ if (!window.DevExpress) {
                 setup: function(data) {
                     $(this).data(SWIPEABLE_DATA_KEY, $.extend($(this).data(SWIPEABLE_DATA_KEY) || {
                         elastic: true,
-                        direction: "horizontal",
-                        forceBlur: true
+                        direction: "horizontal"
                     }, data));
                     if (!swipeDispatcher || swipeDispatcher.isDisposed())
                         swipeDispatcher = new SwipeDispatcher
@@ -6247,9 +6286,9 @@ if (!window.DevExpress) {
                     this.beginUpdate();
                     try {
                         var device = DX.devices.current(),
-                            optionsByDevice = ui.optionsByDevice(device, this.NAME) || {},
-                            defaultOptions = $.extend(this._defaultOptions(), optionsByDevice);
-                        this.option(defaultOptions);
+                            optionsByDevice = ui.optionsByDevice(device, this.NAME) || {};
+                        this.option(this._defaultOptions());
+                        this.option(optionsByDevice);
                         this._initOptions(options || {})
                     }
                     finally {
@@ -6311,9 +6350,7 @@ if (!window.DevExpress) {
                         throw Error("Option name type is unexpected");
                     return this._createAction(this.option(optionName), config)
                 },
-                _optionChanged: function(name, value, prevValue) {
-                    this._invalidate()
-                },
+                _optionChanged: function(name, value, prevValue){},
                 _element: function() {
                     return this._$element
                 },
@@ -6442,58 +6479,8 @@ if (!window.DevExpress) {
                 throw Error("Your version of KnockoutJS is too old. Please upgrade KnockoutJS to 2.3.0 or later.");
         })(ko.version);
         var ui = DX.ui,
-            inflector = DX.inflector,
-            DATA_BIND_ATTR = "data-bind",
-            ANONYMOUS_BINDING_KEY = "unknown",
-            ANONYMOUS_OPTION_NAME_FOR_OPTIONS_BAG = "_";
-        var LOCKS_DATA_KEY = "dxKoLocks",
+            LOCKS_DATA_KEY = "dxKoLocks",
             CREATED_WITH_KO_DATA_KEY = "dxKoCreation";
-        var defaultBindingProvider = ko.bindingProvider.instance,
-            parseObjectLiteral = ko.jsonExpressionRewriting.parseObjectLiteral,
-            bindingEvaluatorElement = $("<div></div>");
-        var isComponentName = function(name) {
-                return name in ui && ui[name].subclassOf && ui[name].subclassOf(ui.Component)
-            };
-        var stripQuotes = function(text) {
-                return text.replace(/^['"]|['"]$/g, "")
-            };
-        var hideComponentBindings = function(element) {
-                element = $(element);
-                var bindingExpr = element.attr(DATA_BIND_ATTR);
-                if (!bindingExpr)
-                    return;
-                var parsedBindingExpr = parseObjectLiteral(bindingExpr),
-                    newBindingFragments = [],
-                    found = false;
-                $.each(parsedBindingExpr, function() {
-                    var componentName = stripQuotes(this.key),
-                        hiddenBindingsAttrName = "data-" + inflector.underscore(componentName);
-                    if (isComponentName(componentName) && !element.attr(hiddenBindingsAttrName)) {
-                        found = true;
-                        element.attr(hiddenBindingsAttrName, this.value);
-                        newBindingFragments.push({
-                            key: componentName,
-                            value: "true"
-                        })
-                    }
-                    else
-                        newBindingFragments.push(this)
-                });
-                if (found)
-                    element.attr(DATA_BIND_ATTR, $.map(newBindingFragments, function(i) {
-                        return i.key + ": " + i.value
-                    }).join(", "))
-            };
-        var PatchedBindingProvider = {
-                _original: defaultBindingProvider,
-                nodeHasBindings: function(node) {
-                    return defaultBindingProvider.nodeHasBindings(node)
-                },
-                getBindings: function(node, bindingContext) {
-                    hideComponentBindings(node);
-                    return defaultBindingProvider.getBindings(node, bindingContext)
-                }
-            };
         var Locks = function() {
                 var info = {};
                 var currentCount = function(lockName) {
@@ -6518,36 +6505,10 @@ if (!window.DevExpress) {
                     }
             };
         var registerComponentKoBinding = function(componentName) {
-                var parseHiddenBindings = function(element) {
-                        var bindingString = $.trim(element.attr("data-" + inflector.underscore(componentName))),
-                            result,
-                            firstItem;
-                        if (bindingString.charAt(0) === "{") {
-                            result = parseObjectLiteral(bindingString);
-                            firstItem = result[0];
-                            if (firstItem && ANONYMOUS_BINDING_KEY in firstItem)
-                                result = $.trim(firstItem[ANONYMOUS_BINDING_KEY])
-                        }
-                        else
-                            result = bindingString;
-                        if (result === "")
-                            result = [];
-                        return result
-                    };
-                ko.bindingHandlers[componentName] = {init: function(domNode) {
+                ko.bindingHandlers[componentName] = {init: function(domNode, valueAccessor) {
                         var element = $(domNode),
-                            parsedBindings = parseHiddenBindings(element),
                             ctorOptions = {},
                             optionNameToModelMap = {};
-                        var evalModelValue = function(optionName, modelValueExpr) {
-                                bindingEvaluatorElement.attr(DATA_BIND_ATTR, optionName + ":" + modelValueExpr);
-                                try {
-                                    return defaultBindingProvider.getBindings(bindingEvaluatorElement[0], ko.contextFor(domNode))[optionName]
-                                }
-                                finally {
-                                    bindingEvaluatorElement.removeAttr(DATA_BIND_ATTR)
-                                }
-                            };
                         var applyModelValueToOption = function(optionName, modelValue) {
                                 var component = element.data(componentName),
                                     locks = element.data(LOCKS_DATA_KEY),
@@ -6584,24 +6545,18 @@ if (!window.DevExpress) {
                                     locks.release(optionName)
                                 }
                             };
-                        if (typeof parsedBindings === "string")
-                            ko.computed(function() {
-                                var cmp = element.data(componentName);
-                                if (cmp)
-                                    cmp.beginUpdate();
-                                $.each(ko.utils.unwrapObservable(evalModelValue(ANONYMOUS_OPTION_NAME_FOR_OPTIONS_BAG, parsedBindings)), applyModelValueToOption);
-                                if (cmp)
-                                    cmp.endUpdate()
-                            }, null, {disposeWhenNodeIsRemoved: domNode});
-                        else
-                            $.each(parsedBindings, function() {
-                                var optionName = stripQuotes($.trim(this.key)),
-                                    modelValueExpr = $.trim(this.value);
+                        ko.computed(function() {
+                            var cmp = element.data(componentName);
+                            if (cmp)
+                                cmp.beginUpdate();
+                            $.each(ko.unwrap(valueAccessor()), function(modelName, modelValueExpr) {
                                 ko.computed(function() {
-                                    var modelValue = evalModelValue(optionName, modelValueExpr);
-                                    applyModelValueToOption(optionName, modelValue)
+                                    applyModelValueToOption(modelName, modelValueExpr)
                                 }, null, {disposeWhenNodeIsRemoved: domNode})
                             });
+                            if (cmp)
+                                cmp.endUpdate()
+                        }, null, {disposeWhenNodeIsRemoved: domNode});
                         if (ctorOptions) {
                             element.data(CREATED_WITH_KO_DATA_KEY, true);
                             element[componentName](ctorOptions);
@@ -6612,7 +6567,6 @@ if (!window.DevExpress) {
                         return {controlsDescendantBindings: ui[componentName].subclassOf(ui.Widget)}
                     }}
             };
-        ko.bindingProvider.instance = PatchedBindingProvider;
         var KoComponent = ui.Component.inherit({_modelByElement: function(element) {
                     if (element.length)
                         return ko.dataFor(element.get(0))
@@ -6625,8 +6579,7 @@ if (!window.DevExpress) {
         var KoTemplate = ui.Template.inherit({
                 ctor: function(element) {
                     this.callBase.apply(this, arguments);
-                    this._template = $("<div />").append(element);
-                    this._cleanTemplateElement();
+                    this._template = $("<div>").append(element);
                     this._registerKoTemplate()
                 },
                 _cleanTemplateElement: function() {
@@ -6639,8 +6592,6 @@ if (!window.DevExpress) {
                     new ko.templateSources.anonymousTemplate(template)['nodes'](template)
                 },
                 render: function(container, data) {
-                    if (!$(container).closest("body").length)
-                        throw Error("Attempt to render into container detached from document");
                     data = data !== undefined ? data : ko.dataFor(container.get(0)) || {};
                     var containerBindingContext = ko.contextFor(container[0]);
                     var bindingContext = containerBindingContext ? containerBindingContext.createChildContext(data) : data;
@@ -6652,8 +6603,6 @@ if (!window.DevExpress) {
                     return result
                 },
                 dispose: function() {
-                    this._cleanTemplateElement();
-                    this._element.remove();
                     this._template.remove()
                 }
             });
@@ -6698,9 +6647,6 @@ if (!window.DevExpress) {
                         if (!cache[widgetName]) {
                             var html = DEFAULT_ITEM_TEMPLATE_GENERATORS[widgetName](),
                                 markup = DX.utils.createMarkupFromString(html);
-                            markup.each(function() {
-                                hideComponentBindings($(this))
-                            });
                             cache[widgetName] = new KoTemplate(markup)
                         }
                         return cache[widgetName]
@@ -6711,6 +6657,7 @@ if (!window.DevExpress) {
                 var bindAttr = $.map(bindings, function(value, key) {
                         return key + ":" + value
                     }).join(",");
+                additionalProperties = additionalProperties || "";
                 return "<" + tagName + " data-bind=\"" + bindAttr + "\" " + additionalProperties + ">" + (closeTag ? "</" + tagName + ">" : "")
             };
         var defaultKoTemplateBasicBindings = {css: "{ 'dx-state-disabled': $data.disabled, 'dx-state-invisible': !$data.visible && $data.visible !== undefined }"};
@@ -6718,23 +6665,10 @@ if (!window.DevExpress) {
                     var template = [createElementWithBindAttr("div", defaultKoTemplateBasicBindings, false)],
                         htmlBinding = createElementWithBindAttr("div", {html: "html"}),
                         textBinding = createElementWithBindAttr("div", {text: "text"}),
-                        primitiveBinding = createElementWithBindAttr("div", {html: "String($data)"});
-                    template.push("<!-- ko if: $data.html -->", htmlBinding, "<!-- /ko -->", "<!-- ko if: !$data.html && $data.text -->", textBinding, "<!-- /ko -->", "<!-- ko ifnot: $.isPlainObject($data) -->", primitiveBinding, "<!-- /ko -->", "</div>");
+                        primitiveBinding = createElementWithBindAttr("div", {text: "String($data)"});
+                    template.push("<!-- ko if: $data.html && !$data.text -->", htmlBinding, "<!-- /ko -->", "<!-- ko if: !$data.html && $data.text -->", textBinding, "<!-- /ko -->", "<!-- ko ifnot: $.isPlainObject($data) -->", primitiveBinding, "<!-- /ko -->", "</div>");
                     return template.join("")
                 }};
-        DEFAULT_ITEM_TEMPLATE_GENERATORS.dxRadioGroup = function() {
-            var template = DEFAULT_ITEM_TEMPLATE_GENERATORS.base(),
-                htmlBinding = createElementWithBindAttr("div", {html: "html"}),
-                textBinding = createElementWithBindAttr("span", {text: "text"}),
-                primitiveBinding = createElementWithBindAttr("span", {html: "String($data)"}),
-                radioWithValueBinding = createElementWithBindAttr("input", {attr: "{ value: $data.value }"}, true, 'type="radio"'),
-                radioWithTextBinding = createElementWithBindAttr("input", {attr: "{ value: $data.text }"}, true, 'type="radio"'),
-                radioWithPrimitiveBinding = createElementWithBindAttr("input", {attr: "{ value: String($data) }"}, true, 'type="radio"');
-            var divInnerStart = template.indexOf(">") + 1,
-                divInnerFinish = template.length - 6;
-            template = [template.substring(0, divInnerStart), "<!-- ko if: $data.html -->", htmlBinding, "<!-- /ko -->", "<!-- ko if: !$data.html -->", "<label>", "<!-- ko if: $data.value -->", radioWithValueBinding, "<!-- /ko -->", "<!-- ko if: !$data.value && $data.text -->", radioWithTextBinding, "<!-- /ko -->", "<!-- ko if: $data.text -->", textBinding, "<!-- /ko -->", "<!-- ko ifnot: $.isPlainObject($data) -->", radioWithPrimitiveBinding, primitiveBinding, "<!-- /ko -->", "</label>", "<!-- /ko -->", template.substring(divInnerFinish, template.length), ];
-            return template.join("")
-        };
         DEFAULT_ITEM_TEMPLATE_GENERATORS.dxPivotTabs = function() {
             var template = DEFAULT_ITEM_TEMPLATE_GENERATORS.base(),
                 titleBinding = createElementWithBindAttr("span", {text: "title"});
@@ -6752,7 +6686,7 @@ if (!window.DevExpress) {
         };
         DEFAULT_ITEM_TEMPLATE_GENERATORS.dxList = function() {
             var template = DEFAULT_ITEM_TEMPLATE_GENERATORS.base(),
-                keyBinding = createElementWithBindAttr("div", {html: "key"});
+                keyBinding = createElementWithBindAttr("div", {text: "key"});
             template = [template.substring(0, template.length - 6), "<!-- ko if: $data.key -->" + keyBinding + "<!-- /ko -->", "</div>"];
             return template.join("")
         };
@@ -6770,7 +6704,7 @@ if (!window.DevExpress) {
         };
         DEFAULT_ITEM_TEMPLATE_GENERATORS.dxGallery = function() {
             var template = DEFAULT_ITEM_TEMPLATE_GENERATORS.base(),
-                primitiveBinding = createElementWithBindAttr("div", {html: "String($data)"}),
+                primitiveBinding = createElementWithBindAttr("div", {text: "String($data)"}),
                 imgBinding = createElementWithBindAttr("img", {attr: "{ src: String($data) }"}, false);
             template = template.replace(primitiveBinding, imgBinding);
             return template
@@ -7197,6 +7131,7 @@ if (!window.DevExpress) {
             ACTIVE_STATE_CLASS = "dx-state-active",
             DISABLED_STATE_CLASS = "dx-state-disabled",
             INVISIBLE_STATE_CLASS = "dx-state-invisible",
+            HOVERED_STATE_CLASS = "dx-state-hovered",
             FEEDBACK_SHOW_TIMEOUT = 30,
             FEEDBACK_HIDE_TIMEOUT = 400;
         var activeElement,
@@ -7211,7 +7146,8 @@ if (!window.DevExpress) {
                         activeStateEnabled: true,
                         width: undefined,
                         height: undefined,
-                        clickAction: null
+                        clickAction: null,
+                        hoverStateEnabled: false
                     })
             },
             _init: function() {
@@ -7224,6 +7160,7 @@ if (!window.DevExpress) {
                 this._element().addClass("dx-widget");
                 this._renderDisabledState();
                 this._toggleVisibility(this.option("visible"));
+                this._toggleHoverState(!this.option("disabled"));
                 this._refreshFeedback();
                 this._renderDimensions();
                 this._renderClick()
@@ -7245,6 +7182,10 @@ if (!window.DevExpress) {
             },
             _toggleVisibility: function(visible) {
                 this._element().toggleClass(INVISIBLE_STATE_CLASS, !visible)
+            },
+            _toggleHoverState: function(value) {
+                if (this.option("hoverStateEnabled"))
+                    this._element().toggleClass(HOVERED_STATE_CLASS, value)
             },
             _renderDimensions: function() {
                 var width = this.option("width"),
@@ -7288,8 +7229,10 @@ if (!window.DevExpress) {
                 var activeStateElement = this._element();
                 if (this._activeStateUnit)
                     activeStateElement = $(element).closest(this._activeStateUnit);
-                if (!activeStateElement.hasClass(DISABLED_STATE_CLASS))
-                    activeStateElement.addClass(ACTIVE_STATE_CLASS)
+                if (!activeStateElement.hasClass(DISABLED_STATE_CLASS)) {
+                    activeStateElement.addClass(ACTIVE_STATE_CLASS);
+                    this._toggleHoverState(false)
+                }
             },
             _saveActiveElement: function() {
                 activeElement = this._element()
@@ -7306,6 +7249,7 @@ if (!window.DevExpress) {
                 if (this._activeStateUnit)
                     activeStateElement = activeStateElement.find(this._activeStateUnit);
                 activeStateElement.removeClass(ACTIVE_STATE_CLASS);
+                this._toggleHoverState(!this.option("disabled"));
                 this._clearActiveElement()
             },
             _clearActiveElement: function() {
@@ -7323,6 +7267,9 @@ if (!window.DevExpress) {
                     case"activeStateEnabled":
                         this._refreshFeedback();
                         break;
+                    case"hoverStateEnabled":
+                        this._toggleHoverState();
+                        break;
                     case"visible":
                         this._toggleVisibility(value);
                         break;
@@ -7338,7 +7285,9 @@ if (!window.DevExpress) {
                 }
             },
             _renderDisabledState: function() {
-                this._element().toggleClass(DISABLED_STATE_CLASS, this.option("disabled"))
+                var disabled = this.option("disabled");
+                this._element().toggleClass(DISABLED_STATE_CLASS, disabled);
+                this._toggleHoverState(!disabled)
             },
             repaint: function() {
                 this._refresh()
@@ -7436,7 +7385,7 @@ if (!window.DevExpress) {
                     this._templates = templates
                 },
                 _initContentReadyAction: function() {
-                    this._contentReadyAction = this._createActionByOption("contentReadyAction")
+                    this._contentReadyAction = this._createActionByOption("contentReadyAction", {excludeValidators: ["gesture", "designMode", "disabled"]})
                 },
                 _render: function() {
                     this.callBase();
@@ -7448,10 +7397,7 @@ if (!window.DevExpress) {
                 },
                 _renderContentImpl: DX.abstract,
                 _fireContentReadyAction: function() {
-                    this._contentReadyAction({
-                        isDisabledResistant: true,
-                        isGesture: true
-                    })
+                    this._contentReadyAction({excludeValidators: ["disabled", "gesture"]})
                 },
                 _getTemplate: function(templateName) {
                     var result = this._acquireTemplate.apply(this, arguments);
@@ -7471,12 +7417,12 @@ if (!window.DevExpress) {
                             templateSource = templateSource.html();
                         return this._createTemplate(templateSource)
                     }
+                    if (typeof templateSource === "string")
+                        return this._templates[templateSource];
                     if ($.isFunction(templateSource)) {
                         var args = $.makeArray(arguments).slice(1);
                         return this._acquireTemplate(templateSource.apply(this, args))
                     }
-                    if (typeof templateSource === "string")
-                        return this._templates[templateSource]
                 },
                 _optionChanged: function(name) {
                     switch (name) {
@@ -7674,6 +7620,7 @@ if (!window.DevExpress) {
                     switch (name) {
                         case"items":
                             this._cleanRenderedItems();
+                            this._invalidate();
                             this.callBase.apply(this, arguments);
                             return;
                         case"dataSource":
@@ -7685,7 +7632,14 @@ if (!window.DevExpress) {
                             this._renderEmptyMessage();
                             return;
                         case"itemRenderedAction":
+                            this._createItemRenderAction();
                             return;
+                        case"itemTemplate":
+                            this._itemTemplateName = null;
+                            this._invalidate();
+                        case"itemRender":
+                            this._itemRender = null;
+                            this._invalidate();
                         default:
                             this.callBase(name, value, prevValue)
                     }
@@ -7740,7 +7694,7 @@ if (!window.DevExpress) {
                 },
                 _attachClickEvent: function() {
                     var itemSelector = this._itemSelector(),
-                        eventName = events.addNamespace("dxclick", this.NAME);
+                        eventName = events.addNamespace("dxclick", this.NAME + "Click");
                     this._itemContainer().off(eventName, itemSelector).on(eventName, itemSelector, $.proxy(this._handleItemClick, this))
                 },
                 _handleItemClick: function(e) {
@@ -7763,8 +7717,8 @@ if (!window.DevExpress) {
                     var itemRenderer = this._getItemRenderer(),
                         itemTemplateName = this._getItemTemplateName(),
                         itemTemplate = this._getTemplate(item.template || itemTemplateName, index, item),
-                        itemElement;
-                    var renderArgs = {
+                        itemElement,
+                        renderArgs = {
                             index: index,
                             item: item,
                             container: container
@@ -7782,14 +7736,24 @@ if (!window.DevExpress) {
                             itemIndex: index
                         };
                     this._postprocessRenderItem(postprocessRenderArgs);
-                    this._createActionByOption("itemRenderedAction", {element: this._element()})({
+                    this._getItemRenderAction()({
                         itemElement: itemElement,
                         itemData: item
                     });
                     return itemElement
                 },
+                _createItemRenderAction: function() {
+                    return this._itemRenderAction = this._createActionByOption("itemRenderedAction", {
+                            element: this._element(),
+                            excludeValidators: ["gesture", "designMode", "disabled"]
+                        })
+                },
+                _getItemRenderAction: function() {
+                    return this._itemRenderAction || this._createItemRenderAction()
+                },
                 _getItemRenderer: function() {
-                    return this.option("itemRender")
+                    this._itemRender = this._itemRender || this.option("itemRender");
+                    return this._itemRender
                 },
                 _createItemByRenderer: function(itemRenderer, renderArgs) {
                     var itemElement = $("<div />").appendTo(renderArgs.container);
@@ -7799,10 +7763,11 @@ if (!window.DevExpress) {
                     return itemElement
                 },
                 _getItemTemplateName: function() {
-                    return this.option("itemTemplate")
+                    this._itemTemplateName = this._itemTemplateName || this.option("itemTemplate");
+                    return this._itemTemplateName
                 },
                 _createItemByTemplate: function(itemTemplate, renderArgs) {
-                    return itemTemplate.render(renderArgs.container, renderArgs.item, renderArgs.index)
+                    return itemTemplate.render(renderArgs.container, renderArgs.item, renderArgs.index, "ignoreTarget")
                 },
                 _itemRenderDefault: function(item, index, itemElement) {
                     if ($.isPlainObject(item)) {
@@ -7832,19 +7797,19 @@ if (!window.DevExpress) {
                         noDataTextElement.text(noDataText)
                     }
                 },
-                _handleItemJQueryEvent: function(jQueryEvent, handlerOptionName, args) {
-                    this._handleItemEvent(jQueryEvent.target, handlerOptionName, $.extend({jQueryEvent: jQueryEvent}, args))
+                _handleItemJQueryEvent: function(jQueryEvent, handlerOptionName, actionArgs, actionConfig) {
+                    this._handleItemEvent(jQueryEvent.target, handlerOptionName, $.extend(actionArgs, {jQueryEvent: jQueryEvent}), actionConfig)
                 },
                 _closestItemElement: function($element) {
                     return $($element).closest(this._itemSelector())
                 },
-                _handleItemEvent: function(initiator, handlerOptionName, eventArgs, actionArgs) {
-                    var action = this._createActionByOption(handlerOptionName, $.extend({element: this._element()}, actionArgs)),
-                        $itemElement = this._closestItemElement($(initiator));
+                _handleItemEvent: function(initiator, handlerOptionName, actionArgs, actionConfig) {
+                    var $itemElement = this._closestItemElement($(initiator)),
+                        action = this._createActionByOption(handlerOptionName, actionConfig);
                     actionArgs = $.extend({
                         itemElement: $itemElement,
                         itemData: this._getItemData($itemElement)
-                    }, eventArgs);
+                    }, actionArgs);
                     return action(actionArgs)
                 },
                 _getItemData: function($itemElement) {
@@ -7902,8 +7867,17 @@ if (!window.DevExpress) {
     })(jQuery, DevExpress);
     /*! Module core, file ui.optionsByDevice.js */
     (function($, DX, undefined) {
-        var isEmulationMode = function(device) {
-                return DX.devices.real.platform !== device.platform || device.platform === "generic" || DX.devices.isRippleEmulator()
+        var isSimulationMode = function(device) {
+                var realDevice = DX.devices.real,
+                    isOldAndroid = realDevice.platform === "android" && realDevice.version.length && realDevice.version[0] < 4,
+                    isPlatformForced = realDevice.platform !== device.platform,
+                    isForcedGeneric = device.platform === "generic",
+                    isForcedDesktop = device.platform === "desktop",
+                    isTizen = realDevice.platform === "tizen",
+                    isGeneric = realDevice.platform === "generic",
+                    isRippleEmulator = DX.devices.isRippleEmulator(),
+                    isSimulator = window.top !== window.self && window.top["dx-force-device"];
+                return isOldAndroid || isTizen || isRippleEmulator || isSimulator || isPlatformForced && !isForcedGeneric && !(isGeneric && isForcedDesktop)
             };
         var optionConfigurator = {};
         optionConfigurator.dxActionSheet = function(device) {
@@ -7911,24 +7885,26 @@ if (!window.DevExpress) {
                 return {usePopover: true}
         };
         optionConfigurator.dxScrollable = function(device) {
-            var realDevice = DX.devices.real;
-            var isOldAndroid = realDevice.platform === "android" && realDevice.version.length && realDevice.version[0] < 4;
-            if (device.platform === "tizen" || isOldAndroid || isEmulationMode(device) && device.platform !== "desktop")
+            if (isSimulationMode(device))
                 return {
                         useNative: false,
                         useSimulatedScrollBar: true
                     };
-            else if (device.platform === "android")
+            else if (device.platform === "android" || device.platform === "win8" && device.phone)
                 return {useSimulatedScrollBar: true}
         };
         optionConfigurator.dxScrollView = function(device) {
             var result = optionConfigurator.dxScrollable(device) || {};
-            if (device.platform === "ios" || device.platform === "desktop" || device.platform === "generic")
+            var realDevice = DevExpress.devices.real;
+            if (realDevice.platform === "ios" || device.platform === "desktop" || device.platform === "generic")
                 $.extend(result, {refreshStrategy: "pullDown"});
-            if (device.platform === "android")
+            if (realDevice.platform === "android")
                 $.extend(result, {refreshStrategy: "swipeDown"});
-            if (device.platform === "win8")
-                $.extend(result, {refreshStrategy: "slideDown"});
+            if (realDevice.platform === "win8")
+                $.extend(result, {
+                    refreshStrategy: "slideDown",
+                    useSimulatedScrollBar: device.phone
+                });
             return result
         };
         optionConfigurator.dxList = function(device) {
@@ -7968,14 +7944,26 @@ if (!window.DevExpress) {
                             show: {
                                 type: "slide",
                                 duration: 400,
-                                from: {top: $("body").height()},
-                                to: {top: 0}
+                                from: {
+                                    top: $("body").height(),
+                                    opacity: 1
+                                },
+                                to: {
+                                    top: 0,
+                                    opacity: 1
+                                }
                             },
                             hide: {
                                 type: "slide",
                                 duration: 400,
-                                from: {top: 0},
-                                to: {top: $("body").height()}
+                                from: {
+                                    top: 0,
+                                    opacity: 1
+                                },
+                                to: {
+                                    top: $("body").height(),
+                                    opacity: 1
+                                }
                             }
                         }}
         };
@@ -8004,7 +7992,7 @@ if (!window.DevExpress) {
                 return {usePopover: true}
         };
         optionConfigurator.dxLoadIndicator = function(device) {
-            if (navigator.appName === "Microsoft Internet Explorer" || navigator.appName === "MSAppHost/1.0")
+            if (DevExpress.browser.msie && DevExpress.browser.version[0] <= 10)
                 return {viaImage: true}
         };
         optionConfigurator.dxDatePicker = function(device) {
@@ -8088,7 +8076,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 this.callBase();
                 this._initMarkup();
                 this._attachWindowResizeCallback();
-                this._attachNativeScrollbarsCustomizationCss()
+                this._attachNativeScrollbarsCustomizationCss();
+                this._locked = false
             },
             _initMarkup: function() {
                 var $element = this._element().addClass(SCROLLABLE_CLASS),
@@ -8130,10 +8119,9 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._strategy.createActions()
             },
             _clean: function() {
-                this._strategy.clean()
+                this._strategy.dispose()
             },
             _dispose: function() {
-                this._strategy.dispose();
                 this._detachWindowResizeCallback();
                 this.callBase()
             },
@@ -8153,6 +8141,10 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"bounceAction":
                         this._createActions();
                         break;
+                    case"direction":
+                    case"showScrollbar":
+                    case"useSimulatedScrollBar":
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -8166,6 +8158,15 @@ if (!DevExpress.MOD_WIDGETS) {
                         x: $.isPlainObject(location) ? -location.x || 0 : direction !== VERTICAL ? -location : 0,
                         y: $.isPlainObject(location) ? -location.y || 0 : direction !== HORIZONTAL ? -location : 0
                     }
+            },
+            _isLocked: function() {
+                return this._locked
+            },
+            _lock: function() {
+                this._locked = true
+            },
+            _unlock: function() {
+                this._locked = false
             },
             content: function() {
                 return this._$content
@@ -8273,6 +8274,7 @@ if (!DevExpress.MOD_WIDGETS) {
         var SCROLLABLE_NATIVE = "dxNativeScrollable",
             SCROLLABLE_NATIVE_CLASS = "dx-scrollable-native",
             SCROLLABLE_SCROLLBAR_SIMULATED = "dx-scrollable-scrollbar-simulated",
+            SCROLLABLE_SCROLLBARS_HIDDEN = "dx-scrollable-scrollbars-hidden",
             VERTICAL = "vertical",
             HORIZONTAL = "horizontal",
             HIDE_SCROLLBAR_TIMOUT = 500,
@@ -8290,7 +8292,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 this.option = $.proxy(scrollable.option, scrollable);
                 this._createActionByOption = $.proxy(scrollable._createActionByOption, scrollable);
                 this._useSimulatedScrollBar = scrollable.option("useSimulatedScrollBar");
-                this._direction = scrollable.option("direction")
+                this._direction = scrollable.option("direction");
+                this._isLocked = $.proxy(scrollable._isLocked, scrollable)
             },
             _attachScrollHandler: function() {
                 $(this._$container).on(events.addNamespace("scroll", SCROLLABLE_NATIVE), $.proxy(this._handleScroll, this))
@@ -8302,6 +8305,9 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _renderScrollbar: function() {
                 this._scrollbars = {};
+                this._$element.toggleClass(SCROLLABLE_SCROLLBARS_HIDDEN, !this.option("showScrollbar"));
+                if (!this.option("showScrollbar"))
+                    return;
                 if (!this._useSimulatedScrollBar)
                     return;
                 if (this._direction !== HORIZONTAL) {
@@ -8322,12 +8328,12 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._$element.addClass(SCROLLABLE_SCROLLBAR_SIMULATED)
             },
             createActions: function() {
-                this._scrollAction = this._createActionByOption("scrollAction");
-                this._updateAction = this._createActionByOption("updateAction")
+                var actionConfig = {excludeValidators: ["gesture", "designMode"]};
+                this._scrollAction = this._createActionByOption("scrollAction", actionConfig);
+                this._updateAction = this._createActionByOption("updateAction", actionConfig)
             },
             _createActionArgs: function() {
                 return {
-                        isGesture: true,
                         jQueryEvent: eventForUserAction,
                         scrollOffset: {
                             top: this._$container.scrollTop(),
@@ -8339,24 +8345,35 @@ if (!DevExpress.MOD_WIDGETS) {
                         reachedBottom: false
                     }
             },
-            clean: function() {
-                this._cleanScrollbars()
+            dispose: function() {
+                if (this === activeScrollable)
+                    activeScrollable = null;
+                $(this._$container).off(events.addNamespace("scroll", SCROLLABLE_NATIVE));
+                this._removeScrollbars();
+                clearTimeout(this._gestureEndTimer)
             },
-            _cleanScrollbars: function() {
+            _removeScrollbars: function() {
                 $.each(this._scrollbars, function() {
                     this._element().remove()
                 })
             },
-            dispose: function() {
-                if (this === activeScrollable)
-                    activeScrollable = null;
-                clearTimeout(this._gestureEndTimer)
-            },
             _handleScroll: function(e) {
+                if (!this._isScrollLocationChanged()) {
+                    e.stopImmediatePropagation();
+                    return
+                }
                 eventForUserAction = e;
-                this._scrollAction(this._createActionArgs());
                 this._moveScrollbars();
-                this._treatNativeGesture()
+                this._scrollAction(this._createActionArgs());
+                this._treatNativeGesture();
+                this._lastLocation = this.location()
+            },
+            _isScrollLocationChanged: function() {
+                var currentLocation = this.location(),
+                    lastLocation = this._lastLocation || {},
+                    isTopChanged = lastLocation.top !== currentLocation.top,
+                    isLeftChanged = lastLocation.left !== currentLocation.left;
+                return isTopChanged || isLeftChanged
             },
             _moveScrollbars: function() {
                 var self = this;
@@ -8436,6 +8453,7 @@ if (!DevExpress.MOD_WIDGETS) {
             }
         });
         var activeScrollable,
+            parentsLength,
             eventForUserAction,
             startEventData = null;
         var GESTURE_LOCK_DISTANCE = 10;
@@ -8462,13 +8480,35 @@ if (!DevExpress.MOD_WIDGETS) {
                     return;
                 activeScrollable = closestScrollable(e.target);
                 if (activeScrollable) {
+                    parentsLength = activeScrollable._$element.parents().length;
                     activeScrollable._handleStart(e);
                     startEventData = events.eventData(e)
                 }
             };
+        var handleBodyPointerMove = function(e) {
+                if (activeScrollable && e.originalEvent) {
+                    var pointerMoveData = e.originalEvent.pointerMoveData || {},
+                        direction = activeScrollable.option("direction"),
+                        directionValue = pointerMoveData[direction];
+                    if (directionValue && directionValue > parentsLength) {
+                        handleEnd();
+                        return
+                    }
+                    pointerMoveData[direction] = parentsLength;
+                    e.originalEvent.pointerMoveData = pointerMoveData
+                }
+            };
         var handleMove = function(e) {
                 if (activeScrollable) {
+                    var pointerMoveData = e.originalEvent.pointerMoveData,
+                        direction = activeScrollable.option("direction");
+                    if (pointerMoveData && pointerMoveData[direction] !== parentsLength)
+                        return;
                     e.originalEvent.isScrollingEvent = true;
+                    if (activeScrollable._isLocked()) {
+                        e.preventDefault();
+                        return
+                    }
                     activeScrollable._handleMove(e);
                     if (startEventData) {
                         var delta = events.eventDelta(startEventData, events.eventData(e));
@@ -8487,15 +8527,23 @@ if (!DevExpress.MOD_WIDGETS) {
                 }
             };
         $(function() {
-            var startAction = new DX.Action(handleStart, {context: ui.dxScrollable}),
-                scrollAction = new DX.Action(handleMove, {context: ui.dxScrollable}),
-                endAction = new DX.Action(handleEnd, {context: ui.dxScrollable});
+            var actionArguments = {
+                    context: ui.dxScrollable,
+                    excludeValidators: ["gesture", "designMode"]
+                },
+                startAction = new DX.Action(handleStart, actionArguments),
+                scrollAction = new DX.Action(handleMove, actionArguments),
+                endAction = new DX.Action(handleEnd, actionArguments),
+                bodyMoveAction = new DX.Action(handleBodyPointerMove, actionArguments);
+            $("body").on(events.addNamespace("dxpointermove", SCROLLABLE_NATIVE), function(e) {
+                bodyMoveAction.execute(e)
+            });
             $(document).on(events.addNamespace("dxpointerdown", SCROLLABLE_NATIVE), function(e) {
-                startAction.execute($.extend(e, {isGesture: true}))
+                startAction.execute(e)
             }).on(events.addNamespace("dxpointermove", SCROLLABLE_NATIVE), function(e) {
-                scrollAction.execute($.extend(e, {isGesture: true}))
+                scrollAction.execute(e)
             }).on(events.addNamespace("dxpointerup dxpointercancel", SCROLLABLE_NATIVE), function(e) {
-                endAction.execute($.extend(e, {isGesture: true}))
+                endAction.execute(e)
             })
         })
     })(jQuery, DevExpress);
@@ -8775,7 +8823,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._$container = scrollable._$container;
                 this._$content = scrollable._$content;
                 this.option = $.proxy(scrollable.option, scrollable);
-                this._createActionByOption = $.proxy(scrollable._createActionByOption, scrollable)
+                this._createActionByOption = $.proxy(scrollable._createActionByOption, scrollable);
+                this._isLocked = $.proxy(scrollable._isLocked, scrollable)
             },
             _attachScrollHandler: function() {
                 $(this._$container).on(events.addNamespace("scroll", SCROLLABLE_SIMULATED), $.proxy(this._handleScroll, this))
@@ -8830,7 +8879,7 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _createActionHandler: function(optionName) {
                 var self = this,
-                    actionHandler = self._createActionByOption(optionName);
+                    actionHandler = self._createActionByOption(optionName, {excludeValidators: ["gesture", "designMode"]});
                 return function() {
                         actionHandler($.extend(self._createActionArgs(), arguments))
                     }
@@ -8839,7 +8888,6 @@ if (!DevExpress.MOD_WIDGETS) {
                 var scrollerX = this._scrollers[HORIZONTAL],
                     scrollerY = this._scrollers[VERTICAL];
                 return {
-                        isGesture: true,
                         jQueryEvent: eventForUserAction,
                         scrollOffset: {
                             top: scrollerY && -scrollerY._location,
@@ -8851,12 +8899,10 @@ if (!DevExpress.MOD_WIDGETS) {
                         reachedBottom: scrollerY && scrollerY._reachedMin()
                     }
             },
-            clean: function() {
-                this._handleEvent("Dispose")
-            },
             dispose: function() {
                 if (this === activeScrollable)
                     activeScrollable = null;
+                this._handleEvent("Dispose");
                 this._detachScrollHandler();
                 this._startAction = null;
                 this._stopAction = null;
@@ -8936,6 +8982,7 @@ if (!DevExpress.MOD_WIDGETS) {
         var INTERTIA_TIMEOUT = 100,
             VELOCITY_CALC_TIMEOUT = 200;
         var activeScrollable,
+            parentsLength,
             scrollStage = STAGE_SLEEP,
             prevEventData,
             savedEventData,
@@ -8972,9 +9019,11 @@ if (!DevExpress.MOD_WIDGETS) {
                 activeScrollable = closestScrollable(e.target);
                 if (activeScrollable && activeScrollable._validateTarget($(e.target))) {
                     if (events.isMouseEvent(e)) {
-                        preventHangingCursorAndHideKeyboard();
+                        if ($(":focus", activeScrollable._$element).length)
+                            preventHangingCursorAndHideKeyboard();
                         preventSelectStartEvent(e)
                     }
+                    parentsLength = activeScrollable._$element.parents().length;
                     eventForUserAction = e;
                     startEventData = prevEventData = savedEventData = events.eventData(e);
                     scrollStage = STAGE_TOUCHED;
@@ -8984,6 +9033,14 @@ if (!DevExpress.MOD_WIDGETS) {
         var handleScroll = function(e) {
                 if (!activeScrollable)
                     return;
+                if (e.originalEvent) {
+                    var pointerMoveData = e.originalEvent.pointerMoveData,
+                        direction = activeScrollable.option("direction");
+                    if (pointerMoveData && pointerMoveData[direction] !== parentsLength) {
+                        resetStage();
+                        return
+                    }
+                }
                 eventForUserAction = e;
                 if (scrollStage === STAGE_SLEEP)
                     return;
@@ -9002,7 +9059,22 @@ if (!DevExpress.MOD_WIDGETS) {
                 activeScrollable._handleFirstMove();
                 scrollStage = STAGE_SCROLLING
             };
+        var handleBodyPointerMove = function(e) {
+                if (scrollStage === STAGE_TOUCHED && e.originalEvent) {
+                    var pointerMoveData = e.originalEvent.pointerMoveData || {},
+                        direction = activeScrollable.option("direction"),
+                        directionValue = pointerMoveData[direction];
+                    if (directionValue && directionValue > parentsLength)
+                        return;
+                    pointerMoveData[direction] = parentsLength;
+                    e.originalEvent.pointerMoveData = pointerMoveData
+                }
+            };
         var handleMove = function(currentEventData, deltaEventData) {
+                if (activeScrollable._isLocked()) {
+                    resetStage();
+                    return
+                }
                 if (events.eventDelta(savedEventData, prevEventData).time > VELOCITY_CALC_TIMEOUT)
                     savedEventData = prevEventData;
                 prevEventData = currentEventData;
@@ -9046,20 +9118,31 @@ if (!DevExpress.MOD_WIDGETS) {
                 handleEnd(e)
             };
         $(function() {
-            var startAction = new DX.Action(handleStart, {context: ui.dxScrollable}),
-                scrollAction = new DX.Action(handleScroll, {context: ui.dxScrollable}),
-                endAction = new DX.Action(handleEnd, {context: ui.dxScrollable});
+            var actionArguments = {
+                    context: ui.dxScrollable,
+                    excludeValidators: ["gesture", "designMode"]
+                },
+                startAction = new DX.Action(handleStart, actionArguments),
+                scrollAction = new DX.Action(handleScroll, actionArguments),
+                endAction = new DX.Action(handleEnd, actionArguments),
+                bodyMoveAction = new DX.Action(handleBodyPointerMove, actionArguments);
+            $("body").on(events.addNamespace("dxpointermove", SCROLLABLE_SIMULATED), function(e) {
+                bodyMoveAction.execute(e)
+            });
             $(document).on(events.addNamespace("dxpointerdown", SCROLLABLE_SIMULATED), function(e) {
-                startAction.execute($.extend(e, {isGesture: true}))
+                startAction.execute(e)
             }).on(events.addNamespace("dxpointermove", SCROLLABLE_SIMULATED), function(e) {
-                scrollAction.execute($.extend(e, {isGesture: true}))
+                scrollAction.execute(e)
             }).on(events.addNamespace("dxpointerup dxpointercancel", SCROLLABLE_SIMULATED), function(e) {
-                endAction.execute($.extend(e, {isGesture: true}))
+                endAction.execute(e)
             });
             if ("mousewheel" in $.event.special) {
-                var wheelAction = new DX.Action(handleWheel, {context: ui.dxScrollable});
+                var wheelAction = new DX.Action(handleWheel, {
+                        context: ui.dxScrollable,
+                        excludeValidators: ["gesture"]
+                    });
                 $(document).on(events.addNamespace("mousewheel", SCROLLABLE_SIMULATED), function(e, delta) {
-                    wheelAction.execute($.extend(e, {isGesture: true}), delta)
+                    wheelAction.execute(e, delta)
                 })
             }
         })
@@ -9130,8 +9213,8 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _createActions: function() {
                 this.callBase();
-                this._pullDownAction = this._createActionByOption("pullDownAction");
-                this._reachBottomAction = this._createActionByOption("reachBottomAction");
+                this._pullDownAction = this._createActionByOption("pullDownAction", {excludeValidators: ["gesture", "designMode"]});
+                this._reachBottomAction = this._createActionByOption("reachBottomAction", {excludeValidators: ["gesture", "designMode"]});
                 this._pullDownEnable(!!this.option("pullDownAction"));
                 this._reachBottomEnable(!!this.option("reachBottomAction"))
             },
@@ -9144,15 +9227,15 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._strategy.reachBottomEnable(enabled)
             },
             _handlePullDown: function() {
-                this._pullDownAction({isGesture: true});
-                this.option("disabled", true)
+                this._pullDownAction();
+                this._lock()
             },
             _handleRelease: function() {
-                this.option("disabled", false)
+                this._unlock()
             },
             _handleReachBottom: function() {
-                this._reachBottomAction({isGesture: true});
-                this.option("disabled", true)
+                this._reachBottomAction();
+                this._lock()
             },
             _optionChanged: function(optionName, optionValue) {
                 switch (optionName) {
@@ -9168,7 +9251,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 return this._$content.children().eq(1)
             },
             release: function(preventReachBottom) {
-                this.toggleLoading(!preventReachBottom);
+                if (preventReachBottom !== undefined)
+                    this.toggleLoading(!preventReachBottom);
                 return this._strategy.release()
             },
             toggleLoading: function(showOrHide) {
@@ -9471,6 +9555,7 @@ if (!DevExpress.MOD_WIDGETS) {
             math = Math,
             events = ui.events;
         var DX_SLIDE_DOWN_NATIVE_SCROLLVIEW_STRATEGY = "dxSlideDownNativeScrollViewStrategy",
+            SCROLLVIEW_LOCKED_CLASS = "dx-scrollview-locked",
             SCROLLVIEW_PULLDOWN_REFRESHING_CLASS = "dx-scrollview-pull-down-refreshing",
             SCROLLVIEW_PULLDOWN_LOADING_CLASS = "dx-scrollview-pull-down-loading",
             SCROLLVIEW_PULLDOWN_READY_CLASS = "dx-scrollview-pull-down-ready",
@@ -9494,9 +9579,22 @@ if (!DevExpress.MOD_WIDGETS) {
                     return this._$content.scrollTop() === 0
                 },
                 _step: function() {
+                    this._lock();
                     var scrollTop = this._$content.scrollTop();
                     scrollTop -= Math.min(scrollTop, 2 * SCROLLING_STEP);
                     this._$content.scrollTop(scrollTop)
+                },
+                _complete: function() {
+                    this._unlock()
+                },
+                _stop: function() {
+                    this._unlock()
+                },
+                _lock: function() {
+                    this.refreshStrategy._$container.addClass(SCROLLVIEW_LOCKED_CLASS)
+                },
+                _unlock: function() {
+                    this.refreshStrategy._$container.removeClass(SCROLLVIEW_LOCKED_CLASS)
                 }
             });
         var SlideDownAnimator = SlideUpAnimator.inherit({
@@ -9505,11 +9603,14 @@ if (!DevExpress.MOD_WIDGETS) {
                     return this._currentPosition === this.refreshStrategy._topPocketSize
                 },
                 _step: function() {
+                    this._lock();
                     var scrollTop = this._$content.scrollTop();
-                    scrollTop += Math.min(this.refreshStrategy._topPocketSize - scrollTop, SCROLLING_STEP);
+                    var currentPosition = this.refreshStrategy._topPocketSize - scrollTop;
+                    scrollTop += currentPosition < 0 ? -Math.min(Math.abs(currentPosition), SCROLLING_STEP) : Math.min(currentPosition, SCROLLING_STEP);
                     this._$content.scrollTop(scrollTop)
                 },
                 _complete: function() {
+                    this.callBase();
                     this.refreshStrategy._releaseState()
                 }
             });
@@ -9523,7 +9624,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._$content = scrollView._$content;
                     this._$scrollViewContent = scrollView.content();
                     this._initCallbacks();
-                    this._initAnimators()
+                    this._initAnimators();
+                    $(document).on("dx.viewchanged", $.proxy(this._hidePullDown, this))
                 },
                 _initCallbacks: function() {
                     this.pullDownCallbacks = $.Callbacks();
@@ -9553,7 +9655,7 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._$pullDown.empty().append($image).append($loadContainer.append($loadIndicator)).append($pullDownText)
                 },
                 _renderBottom: function() {
-                    this._$bottomPocket.empty().append("<progress>").appendTo(this._$container)
+                    this._$bottomPocket.empty().append("<progress>")
                 },
                 _releaseState: function() {
                     this._state = STATE_RELEASED;
@@ -9570,11 +9672,24 @@ if (!DevExpress.MOD_WIDGETS) {
                 },
                 update: function() {
                     this.callBase();
-                    this._updateDimensions()
+                    this._updateDimensions();
+                    this._updateScrollbars()
                 },
                 _updateDimensions: function() {
                     this._topPocketSize = this._$topPocket.height();
                     this._scrollOffset = this._$scrollViewContent.prop("scrollHeight") - this._$scrollViewContent.prop("clientHeight")
+                },
+                _contentSize: function() {
+                    return {
+                            height: this._$scrollViewContent.prop("scrollHeight"),
+                            width: this._$scrollViewContent.prop("scrollWidth")
+                        }
+                },
+                location: function() {
+                    return {
+                            left: -this._$scrollViewContent.scrollLeft(),
+                            top: -this._$scrollViewContent.scrollTop()
+                        }
                 },
                 _attachScrollHandler: function() {
                     this.callBase();
@@ -9585,6 +9700,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     var contentLocation = this._$content.scrollTop();
                     if (this._isPullDown(contentLocation))
                         this._pullDownRefreshing();
+                    else if (this._isReachBottom(contentLocation))
+                        this._reachBottom();
                     else
                         this._pullDownReady()
                 },
@@ -9599,6 +9716,18 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._refreshPullDownText();
                     this._$container.addClass(SCROLLVIEW_PULLDOWN_REFRESHING_CLASS);
                     this.pullDownCallbacks.fire()
+                },
+                _isReachBottom: function(location) {
+                    this._scrollContent = this._$content.prop("scrollHeight") - this._$content.prop("clientHeight");
+                    return this._reachBottomEnabled && location === this._scrollContent
+                },
+                _reachBottom: function() {
+                    if (this._state === STATE_LOADING || !this._reachBottomEnabled)
+                        return;
+                    this._state = STATE_LOADING;
+                    this._stopAnimators();
+                    this._$container.addClass(SCROLLVIEW_PULLDOWN_LOADING_CLASS);
+                    this.reachBottomCallbacks.fire()
                 },
                 _pullDownReady: function() {
                     if (this._state === STATE_READY || this._state === STATE_AFTER_REFRESHING)
@@ -9624,20 +9753,7 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._slideUp.stop()
                 },
                 _handleScrollViewContentScroll: function(e) {
-                    var scrollViewContentLocation = this._$scrollViewContent.scrollTop();
-                    this._handleScroll(e);
-                    if (this._isReachBottom(scrollViewContentLocation))
-                        this._reachBottom()
-                },
-                _isReachBottom: function(location) {
-                    return this._reachBottomEnabled && location >= this._scrollOffset - LOADING_HEIGHT
-                },
-                _reachBottom: function() {
-                    if (this._state === STATE_LOADING)
-                        return;
-                    this._state = STATE_LOADING;
-                    this._$container.addClass(SCROLLVIEW_PULLDOWN_LOADING_CLASS);
-                    this.reachBottomCallbacks.fire()
+                    this._handleScroll(e)
                 },
                 pullDownEnable: function(enabled) {
                     this._pullDownEnabled = enabled
@@ -9649,6 +9765,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 release: function() {
                     var deferred = $.Deferred();
                     this._updateDimensions();
+                    this._updateScrollbars();
                     setTimeout($.proxy(function() {
                         this._state = STATE_AFTER_REFRESHING;
                         this._startDownAnimation();
@@ -9707,8 +9824,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     this.reachBottomCallbacks = $.Callbacks()
                 },
                 _updateBounds: function() {
-                    this._topPocketSize = this._$topPocket[this._dimension]();
-                    this._bottomPocketSize = this._$bottomPocket[this._dimension]();
+                    var considerPockets = this._direction !== "horizontal";
+                    this._topPocketSize = considerPockets ? this._$topPocket[this._dimension]() : 0;
+                    this._bottomPocketSize = considerPockets ? this._$bottomPocket[this._dimension]() : 0;
                     this._updateOffsets()
                 },
                 _updateOffsets: function() {
@@ -9891,8 +10009,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         startAction: null,
                         updateAction: null,
                         endAction: null,
-                        cancelAction: null,
-                        forceBlur: true
+                        cancelAction: null
                     })
             },
             _render: function() {
@@ -9906,12 +10023,13 @@ if (!DevExpress.MOD_WIDGETS) {
                 var NAME = this.NAME;
                 this._createEventData();
                 $.each(ACTION_TO_EVENT_MAP, $.proxy(function(actionName, eventName) {
-                    var action = this._createActionByOption(actionName, {context: this});
-                    this._element().on(events.addNamespace(eventName, NAME), this._eventData, function(e) {
-                        return action({
-                                jQueryEvent: e,
-                                isGesture: true
-                            })
+                    var action = this._createActionByOption(actionName, {
+                            context: this,
+                            excludeValidators: ["gesture"]
+                        }),
+                        eventName = events.addNamespace(eventName, NAME);
+                    this._element().off(eventName).on(eventName, this._eventData, function(e) {
+                        return action({jQueryEvent: e})
                     })
                 }, this))
             },
@@ -9919,8 +10037,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._eventData = {
                     elastic: this.option("elastic"),
                     itemSizeFunc: this.option("itemSizeFunc"),
-                    direction: this.option("direction"),
-                    forceBlur: this.option("forceBlur")
+                    direction: this.option("direction")
                 }
             },
             _detachEventHanlers: function() {
@@ -9963,7 +10080,8 @@ if (!DevExpress.MOD_WIDGETS) {
                         type: "normal",
                         text: "",
                         icon: "",
-                        iconSrc: ""
+                        iconSrc: "",
+                        hoverStateEnabled: true
                     })
             },
             _init: function() {
@@ -10026,6 +10144,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"text":
                         this._renderText();
                         break;
+                    case"type":
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -10042,7 +10162,10 @@ if (!DevExpress.MOD_WIDGETS) {
             CHECKBOX_FEEDBACK_HIDE_TIMEOUT = 100;
         ui.registerComponent("dxCheckBox", ui.Widget.inherit({
             _defaultOptions: function() {
-                return $.extend(this.callBase(), {checked: false})
+                return $.extend(this.callBase(), {
+                        checked: false,
+                        hoverStateEnabled: true
+                    })
             },
             _init: function() {
                 this.callBase();
@@ -10067,8 +10190,14 @@ if (!DevExpress.MOD_WIDGETS) {
             _renderValue: function() {
                 this._element().toggleClass(CHECKBOX_CHECKED_CLASS, Boolean(this.option("checked")))
             },
-            _refresh: function() {
-                this._renderValue()
+            _optionChanged: function(name) {
+                switch (name) {
+                    case"checked":
+                        this._renderValue();
+                        break;
+                    default:
+                        this.callBase.apply(this, arguments)
+                }
             }
         }))
     })(jQuery, DevExpress);
@@ -10199,6 +10328,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"value":
                         this._renderValue();
                         this._changeAction(value);
+                        break;
+                    case"valueChangeAction":
+                        this._renderValueChangeAction();
                         break;
                     case"onText":
                     case"offText":
@@ -10380,6 +10512,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"enterKeyAction":
                         this._renderEnterKeyAction();
                         break;
+                    case"placeholder":
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -10691,7 +10825,7 @@ if (!DevExpress.MOD_WIDGETS) {
             _renderStartHandler: function() {
                 var eventName = events.addNamespace("dxpointerdown", this.NAME),
                     startAction = this._createAction($.proxy(this._handleStart, this));
-                this._element().on(eventName, function(e) {
+                this._element().off(eventName).on(eventName, function(e) {
                     startAction({jQueryEvent: e})
                 })
             },
@@ -10763,8 +10897,17 @@ if (!DevExpress.MOD_WIDGETS) {
                 translator.move(this._$handle, {left: ratio * barWidth - handleWidth / 2});
                 this._currentRatio = ratio
             },
-            _refresh: function() {
-                this._renderValue()
+            _optionChanged: function(name) {
+                switch (name) {
+                    case"min":
+                    case"max":
+                    case"step":
+                    case"value":
+                        this._renderValue();
+                        break;
+                    default:
+                        this.callBase.apply(this, arguments)
+                }
             },
             _feedbackOff: function(isGestureStart) {
                 if (isGestureStart)
@@ -10856,6 +10999,16 @@ if (!DevExpress.MOD_WIDGETS) {
                 translator.move(this._$selectedRange, {left: ratio1 * barWidth});
                 translator.move(this._$handle, {left: ratio1 * barWidth - handleWidth / 2});
                 translator.move(this._$handleRight, {left: ratio2 * barWidth - handleWidth / 2})
+            },
+            _optionChanged: function(name) {
+                switch (name) {
+                    case"start":
+                    case"end":
+                        this._renderValue();
+                        break;
+                    default:
+                        this.callBase.apply(this, arguments)
+                }
             }
         }))
     })(jQuery, DevExpress);
@@ -10869,19 +11022,20 @@ if (!DevExpress.MOD_WIDGETS) {
             RADIO_BUTTON_CLASS = "dx-radio-button",
             RADIO_BUTTON_INPUT_CLASS = "dx-radio-button-input",
             RADIO_BUTTON_VALUE_CLASS = "dx-radio-button-value",
+            RADIO_VALUE_CONTAINER_CLASS = "dx-radio-value-container",
             RADIO_BUTTON_ACTIVE_STATE = "dx-state-active",
             RADIO_BUTTON_DATA_KEY = "dxRadioButtonData",
             RADIO_BUTTON_SELECTOR = "input[type='radio']",
-            RADIO_BUTTON_TAG = "<input type='radio' />";
+            RADIO_BUTTON_TAG = "<input type='radio' />",
+            RADIO_GROUP_INSTANCE_INDEX = 0;
         ui.registerComponent("dxRadioGroup", ui.SelectableCollectionWidget.inherit({
             _activeStateUnit: "label",
             _defaultOptions: function() {
                 return $.extend(this.callBase(), {
                         layout: "vertical",
-                        name: "radioGroup",
                         value: undefined,
                         valueExpr: null,
-                        displayExpr: "this"
+                        hoverStateEnabled: true
                     })
             },
             _itemClass: function() {
@@ -10895,15 +11049,15 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _init: function() {
                 this.callBase();
+                this._name = "dxRadioGroup" + RADIO_GROUP_INSTANCE_INDEX++;
                 if (!this._dataSource)
                     this._itemsToDataSource()
             },
             _render: function() {
+                this._element().addClass(RADIO_GROUP_CLASS);
                 this._compileValueGetter();
-                this._compileDisplayGetter();
                 this.callBase();
                 this._renderLayout();
-                this._addClasses();
                 this._renderValue()
             },
             _renderValue: function() {
@@ -10918,12 +11072,6 @@ if (!DevExpress.MOD_WIDGETS) {
                 var layout = this.option("layout");
                 this._element().toggleClass(RADIO_GROUP_VERTICAL_CLASS, layout === "vertical");
                 this._element().toggleClass(RADIO_GROUP_HORIZONTAL_CLASS, layout === "horizontal")
-            },
-            _addClasses: function() {
-                var $element = this._element();
-                $element.addClass(RADIO_GROUP_CLASS);
-                $element.find("span").addClass(RADIO_BUTTON_VALUE_CLASS);
-                $element.find(RADIO_BUTTON_SELECTOR).addClass(RADIO_BUTTON_INPUT_CLASS)
             },
             _attachSelectedEvent: function() {
                 var itemSelectAction = this._createAction(this._handleItemSelect);
@@ -10941,19 +11089,27 @@ if (!DevExpress.MOD_WIDGETS) {
                     $currentInput.closest("." + RADIO_BUTTON_CLASS).addClass("checked")
                 }
             },
-            _itemRenderDefault: function(item, index, $itemElement) {
-                this.callBase(item, index, $itemElement);
+            _createItemByRenderer: function(itemRenderer, renderArgs) {
+                var $itemElement = this.callBase.apply(this, arguments);
+                this._renderInput($itemElement, renderArgs.item);
+                return $itemElement
+            },
+            _createItemByTemplate: function(itemTemplate, renderArgs) {
+                var $itemElement = this.callBase.apply(this, arguments);
+                this._renderInput($itemElement, renderArgs.item);
+                return $itemElement
+            },
+            _renderInput: function($element, item) {
                 if (item.html)
                     return;
-                var $itemText = $("<span>").text(this._displayGetter(item)),
-                    $inputRadio = $(RADIO_BUTTON_TAG),
-                    $label = $("<label>");
+                var $inputRadio = $(RADIO_BUTTON_TAG).addClass(RADIO_BUTTON_INPUT_CLASS),
+                    $radioSpan = $("<div>").addClass(RADIO_BUTTON_VALUE_CLASS),
+                    $radioSpanContainer = $("<div>").append($radioSpan).addClass(RADIO_VALUE_CONTAINER_CLASS);
                 $inputRadio.prop("value", this._getItemValue(item));
-                $label.append($inputRadio).append($itemText);
-                $itemElement.html($label)
+                $element.prepend($radioSpanContainer).prepend($inputRadio).wrapInner($("<label>"))
             },
             _postprocessRenderItem: function(args) {
-                $(args.itemElement).find(RADIO_BUTTON_SELECTOR).prop("name", this.option("name"))
+                $(args.itemElement).find(RADIO_BUTTON_SELECTOR).prop("name", this._name)
             },
             _itemsToDataSource: function() {
                 this._dataSource = new DevExpress.data.DataSource(this.option("items"))
@@ -10963,9 +11119,6 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _valueGetterExpr: function() {
                 return this.option("valueExpr") || this._dataSource && this._dataSource._store._key || "this"
-            },
-            _compileDisplayGetter: function() {
-                this._displayGetter = DX.data.utils.compileGetter(this.option("displayExpr"))
             },
             _getItemValue: function(item) {
                 return this._valueGetter(item) || item.text
@@ -11017,6 +11170,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"layout":
                         this._renderLayout();
                         break;
+                    case"valueExpr":
+                    case"itemRender":
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -11081,7 +11237,7 @@ if (!DevExpress.MOD_WIDGETS) {
             _attachSelectedEvent: function() {
                 var itemSelector = this._itemSelector(),
                     itemSelectAction = this._createAction(this._handleItemSelect),
-                    eventName = events.addNamespace("dxpointerup", this.NAME);
+                    eventName = events.addNamespace("dxclick", this.NAME + "Select");
                 this._element().off(eventName, itemSelector).on(eventName, itemSelector, function(e) {
                     var $itemElement = $(e.target).closest(itemSelector);
                     itemSelectAction({
@@ -11191,10 +11347,11 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._$ghostTab = $("<div>").addClass(PIVOT_GHOST_TAB_CLASS)
             },
             _initActions: function() {
-                this._updatePositionAction = this._createActionByOption("updatePositionAction");
-                this._rollbackAction = this._createActionByOption("rollbackAction");
-                this._completeAction = this._createActionByOption("completeAction");
-                this._stopAction = this._createActionByOption("stopAction")
+                var excludeValidators = {excludeValidators: ["gesture"]};
+                this._updatePositionAction = this._createActionByOption("updatePositionAction", excludeValidators);
+                this._rollbackAction = this._createActionByOption("rollbackAction", excludeValidators);
+                this._completeAction = this._createActionByOption("completeAction", excludeValidators);
+                this._stopAction = this._createActionByOption("stopAction", excludeValidators)
             },
             _render: function() {
                 this._element().addClass(PIVOT_TABS_CLASS);
@@ -11357,7 +11514,7 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _swipeStartHandler: function(e) {
                 this._stopAnimation();
-                this._stopAction({isGesture: true});
+                this._stopAction();
                 if (this.option("disabled") || this._indexBoundary() <= 1)
                     e.cancel = true
             },
@@ -11366,10 +11523,7 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _swipeUpdateHandler: function(e) {
                 var offset = e.offset;
-                this._updatePositionAction({
-                    offset: offset,
-                    isGesture: true
-                });
+                this._updatePositionAction({offset: offset});
                 this._updateTabsPositions(offset)
             },
             _swipeEndHandler: function(e) {
@@ -11377,15 +11531,12 @@ if (!DevExpress.MOD_WIDGETS) {
                     targetOffset = e.targetOffset;
                 if (targetOffset === 0) {
                     this._animateRollback();
-                    this._rollbackAction({isGesture: true})
+                    this._rollbackAction()
                 }
                 else {
                     var newIndex = this._normalizeIndex(selectedIndex - targetOffset);
                     this._animateComplete(newIndex, selectedIndex);
-                    this._completeAction({
-                        newIndex: newIndex,
-                        isGesture: true
-                    })
+                    this._completeAction({newIndex: newIndex})
                 }
             },
             _previousIndex: function(atIndex) {
@@ -11740,7 +11891,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 })
             },
             _renderItem: function(index, item) {
-                var align = item.align || "center",
+                var align = item.location || item.align || "center",
                     container = this._$toolbarItemsContainer.find(".dx-toolbar-" + align);
                 var itemElement = this.callBase(index, item, container);
                 itemElement.addClass(TOOLBAR_BUTTON_CLASS);
@@ -11753,12 +11904,12 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _getToolbarItems: function() {
                 return $.grep(this.option("items") || [], function(item) {
-                        return !item.isMenu
+                        return item.location !== "menu"
                     })
             },
             _getMenuItems: function() {
                 return $.grep(this.option("items") || [], function(item) {
-                        return item.isMenu
+                        return item.location === "menu"
                     })
             },
             _renderContentImpl: function() {
@@ -11843,14 +11994,10 @@ if (!DevExpress.MOD_WIDGETS) {
                     width: "100%",
                     showTitle: false,
                     closeOnOutsideClick: $.proxy(this._handleListOutsideClick, this),
-                    position: {
-                        my: "bottom",
-                        at: "bottom",
-                        of: window
-                    },
-                    animation: null
-                }).dxOverlay("instance");
-                this._element().css("z-index", this._listOverlay._$wrapper.css("z-index"))
+                    position: null,
+                    animation: null,
+                    backButtonHandler: null
+                }).dxOverlay("instance")
             },
             _renderContainerSwipe: function() {
                 this._$toolbarItemsContainer.appendTo(this._listOverlay.content()).dxSwipeable({
@@ -11867,7 +12014,7 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._toggleMenuVisibility(false, true)
             },
             _calculatePixelOffset: function(offset) {
-                offset = offset || 0;
+                offset = (offset || 0) - 1;
                 var maxOffset = this._getListHeight();
                 return offset * maxOffset
             },
@@ -11958,6 +12105,7 @@ if (!DevExpress.MOD_WIDGETS) {
             events = ui.events,
             translator = DX.translator,
             fx = DX.fx;
+        var DX_PREVENT_ITEM_CLICK_ACTION = "dxPreventItemClickAction";
         var editOptionsRegistry = [];
         var registerOption = function(option) {
                 editOptionsRegistry.push(option)
@@ -12113,6 +12261,8 @@ if (!DevExpress.MOD_WIDGETS) {
             });
         var SWITCHABLE_DELETE_READY_CLASS = "dx-switchable-delete-ready",
             SWITCHABLE_DELETE_BUTTON_CONTAINER_CLASS = "dx-switchable-delete-button-container",
+            SWITCHABLE_DELETE_BUTTON_WRAPPER_CLASS = "dx-switchable-delete-button-wrapper",
+            SWITCHABLE_DELETE_BUTTON_INNER_WRAPPER_CLASS = "dx-switchable-delete-button-inner-wrapper",
             SWITCHABLE_DELETE_BUTTON_CLASS = "dx-switchable-delete-button";
         var SwitchableDeleteDecorator = ListEditDecorator.inherit({
                 handleClick: function() {
@@ -12130,6 +12280,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     var self = this,
                         $itemElement = config.$itemElement;
                     var $buttonContainer = $("<div />").addClass(SWITCHABLE_DELETE_BUTTON_CONTAINER_CLASS),
+                        $buttonWrapper = $("<div />").addClass(SWITCHABLE_DELETE_BUTTON_WRAPPER_CLASS),
+                        $buttonInnerWrapper = $("<div />").addClass(SWITCHABLE_DELETE_BUTTON_INNER_WRAPPER_CLASS),
                         $button = $("<div />").addClass(SWITCHABLE_DELETE_BUTTON_CLASS);
                     $button.dxButton({
                         text: Globalize.localize("dxListEditDecorator-delete"),
@@ -12139,7 +12291,9 @@ if (!DevExpress.MOD_WIDGETS) {
                             e.jQueryEvent.stopPropagation()
                         }
                     });
-                    $buttonContainer.append($button);
+                    $buttonContainer.append($buttonWrapper);
+                    $buttonWrapper.append($buttonInnerWrapper);
+                    $buttonInnerWrapper.append($button);
                     $itemElement.append($buttonContainer)
                 },
                 _cancelDelete: function($itemElement) {
@@ -12153,10 +12307,10 @@ if (!DevExpress.MOD_WIDGETS) {
                 var $toggle = $("<div />").addClass(TOGGLE_DELETE_SWITCH_CLASS),
                     $toggleIcon = $("<div />").addClass(TOGGLE_DELETE_SWITCH_ICON_CLASS);
                 $toggle.append($toggleIcon);
-                $toggle.on(events.addNamespace("dxpointerup dxpointercancel", DX_LIST_EDIT_DECORATOR), function(e) {
-                    $itemElement.toggleClass(SWITCHABLE_DELETE_READY_CLASS);
+                $toggle.on(events.addNamespace("dxpointerup dxpointercancel dxpointerdown", DX_LIST_EDIT_DECORATOR), function(e) {
                     e.stopPropagation()
-                }).on(events.addNamespace("dxpointerdown", DX_LIST_EDIT_DECORATOR), function(e) {
+                }).on(events.addNamespace("dxclick", DX_LIST_EDIT_DECORATOR), function(e) {
+                    $itemElement.toggleClass(SWITCHABLE_DELETE_READY_CLASS);
                     e.stopPropagation()
                 });
                 return $toggle
@@ -12164,9 +12318,11 @@ if (!DevExpress.MOD_WIDGETS) {
         registerDecorator("delete", "slideButton", SwitchableButtonDeleteDecorator.inherit({modifyElement: function(config) {
                 this.callBase.apply(this, arguments);
                 var $itemElement = config.$itemElement;
-                $itemElement.on(events.addNamespace("dxswipeend", DX_LIST_EDIT_DECORATOR), function(e) {
-                    if (e.targetOffset !== 0)
-                        $itemElement.addClass(SWITCHABLE_DELETE_READY_CLASS)
+                $itemElement.on(events.addNamespace("dxswipe", DX_LIST_EDIT_DECORATOR), function(e) {
+                    if (e.targetOffset !== 0) {
+                        $itemElement.addClass(SWITCHABLE_DELETE_READY_CLASS);
+                        $itemElement.data(DX_PREVENT_ITEM_CLICK_ACTION, true)
+                    }
                 })
             }}));
         var SLIDE_ITEM_CONTENT_CLASS = "dx-slide-item-content",
@@ -12193,7 +12349,8 @@ if (!DevExpress.MOD_WIDGETS) {
                     readyToDelete = $itemElement.hasClass(SWITCHABLE_DELETE_READY_CLASS),
                     startOffset = readyToDelete ? -$itemElement.find("." + SLIDE_ITEM_DELETE_BUTTON_CLASS).outerWidth() : 0,
                     position = offset + startOffset < 0 ? offset + startOffset : 0;
-                translator.move($itemElement.find("." + SLIDE_ITEM_CONTENT_CLASS), {left: position})
+                translator.move($itemElement.find("." + SLIDE_ITEM_CONTENT_CLASS), {left: position});
+                $itemElement.data(DX_PREVENT_ITEM_CLICK_ACTION, true)
             },
             _handleSwipeEnd: function(e) {
                 var $itemElement = $(e.currentTarget),
@@ -12389,6 +12546,7 @@ if (!DevExpress.MOD_WIDGETS) {
     (function($, DX, undefined) {
         var ui = DX.ui,
             events = ui.events;
+        var DX_PREVENT_ITEM_CLICK_ACTION = "dxPreventItemClickAction";
         var ListEditStrategy = DX.Class.inherit({
                 ctor: function(list) {
                     this._list = list
@@ -12670,9 +12828,9 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._createScrollViewActions()
             },
             _createScrollViewActions: function() {
-                this._scrollAction = this._createActionByOption("scrollAction", {isGesture: true});
-                this._pullRefreshAction = this._createActionByOption("pullRefreshAction", {isGesture: true});
-                this._pageLoadingAction = this._createActionByOption("pageLoadingAction", {isGesture: true})
+                this._scrollAction = this._createActionByOption("scrollAction", {excludeValidators: ["gesture"]});
+                this._pullRefreshAction = this._createActionByOption("pullRefreshAction", {excludeValidators: ["gesture"]});
+                this._pageLoadingAction = this._createActionByOption("pageLoadingAction", {excludeValidators: ["gesture"]})
             },
             _handleScroll: function(e) {
                 this._scrollAction(e)
@@ -12680,29 +12838,41 @@ if (!DevExpress.MOD_WIDGETS) {
             _afterItemsRendered: function(tryLoadMore) {
                 var allDataLoaded = !tryLoadMore || !this._dataSource || this._dataSource.isLastPage(),
                     canLoadNext = this.option("autoPagingEnabled") && !allDataLoaded;
-                this._scrollView.release(!canLoadNext);
-                if (this._shouldRenderNextButton())
-                    this._toggleNextButton(!allDataLoaded)
+                if (this.option("autoPagingEnabled") && this._scrollView && !this._scrollView.isFull() && this._dataSource && this._dataSource.pageIndex() === 0 && !this._dataSource.isLastPage())
+                    this._infiniteDataLoading();
+                else {
+                    this._scrollView.release(!canLoadNext);
+                    if (this._shouldRenderNextButton())
+                        this._toggleNextButton(!allDataLoaded)
+                }
             },
             _handlePullDown: function(e) {
                 this._pullRefreshAction(e);
                 if (this._dataSource && !this._dataSource.isLoading()) {
                     this._dataSource.pageIndex(0);
-                    this._dataSource.load()
+                    this._dataSource.load().done($.proxy(this._infiniteDataLoading, this))
                 }
                 else
                     this._afterItemsRendered()
             },
+            _infiniteDataLoading: function() {
+                var dataSource = this._dataSource;
+                if (this._scrollView && !this._scrollView.isFull() && dataSource && !dataSource.isLoading() && !dataSource.isLastPage())
+                    this._loadNextPage().done($.proxy(this._infiniteDataLoading, this))
+            },
             _handleScrollBottom: function(e) {
                 this._pageLoadingAction(e);
                 var dataSource = this._dataSource;
-                if (dataSource && !dataSource.isLoading()) {
-                    this._expectNextPageLoading();
-                    dataSource.pageIndex(1 + dataSource.pageIndex());
-                    dataSource.load()
-                }
+                if (dataSource && !dataSource.isLoading())
+                    this._loadNextPage();
                 else
                     this._afterItemsRendered()
+            },
+            _loadNextPage: function() {
+                var dataSource = this._dataSource;
+                this._expectNextPageLoading();
+                dataSource.pageIndex(1 + dataSource.pageIndex());
+                return dataSource.load()
             },
             _handleDataSourceLoadError: function() {
                 this.callBase.apply(this, arguments);
@@ -12730,6 +12900,11 @@ if (!DevExpress.MOD_WIDGETS) {
             _renderItemHold: function() {
                 var eventName = events.addNamespace("dxhold", this.NAME);
                 this._element().off(eventName).on(eventName, this._itemSelector(), {timeout: this.option("itemHoldTimeout")}, $.proxy(this._handleItemHold, this))
+            },
+            _attachClickEvent: function() {
+                var itemSelector = this._itemSelector(),
+                    eventName = events.addNamespace("click", this.NAME);
+                this._itemContainer().off(eventName, itemSelector).on(eventName, itemSelector, $.proxy(this._handleItemClick, this))
             },
             _attachSwipeEvent: function() {
                 var $element = this._element();
@@ -12764,7 +12939,10 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._afterItemsRendered(true)
             },
             _handleItemClick: function(e) {
-                if (this.option("editEnabled") && this._editProvider.handleClick(this._closestItemElement(e.target)))
+                var $itemElement = this._closestItemElement(e.target);
+                if ($itemElement.data(DX_PREVENT_ITEM_CLICK_ACTION))
+                    $itemElement.data(DX_PREVENT_ITEM_CLICK_ACTION, false);
+                else if (this.option("editEnabled") && this._editProvider.handleClick($itemElement))
                     e.stopPropagation();
                 else
                     this.callBase.apply(this, arguments)
@@ -12776,10 +12954,7 @@ if (!DevExpress.MOD_WIDGETS) {
                     this._handleItemJQueryEvent(e, "itemHoldAction")
             },
             _handleItemSwipe: function(e) {
-                this._handleItemJQueryEvent(e, "itemSwipeAction", {
-                    direction: e.offset < 0 ? "left" : "right",
-                    isGesture: true
-                })
+                this._handleItemJQueryEvent(e, "itemSwipeAction", {direction: e.offset < 0 ? "left" : "right"}, {excludeValidators: ["gesture"]})
             },
             _getItemRenderer: function() {
                 if (this.option("editEnabled") && this._editProvider.isRenderingByRenderer())
@@ -12823,8 +12998,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 var groupRenderer = self.option("groupRender"),
                     groupTemplateName = self.option("groupTemplate"),
                     groupTemplate = self._getTemplate(group.template || groupTemplateName, index, group),
-                    groupHeaderElement;
-                var renderArgs = {
+                    groupHeaderElement,
+                    renderArgs = {
                         index: index,
                         group: group,
                         container: groupElement
@@ -12874,39 +13049,37 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"dataSource":
                         this.callBase.apply(this, arguments);
                         this._initScrollView();
-                        return;
+                        break;
                     case"showScrollbar":
                     case"scrollingEnabled":
                     case"pullRefreshEnabled":
                     case"autoPagingEnabled":
                         this._initScrollView();
-                        return;
-                    case"grouped":
-                        this._clearSelectedItems();
-                        delete this._renderingGroupIndex;
-                        this._initEditStrategy(value);
-                        this.callBase.apply(this, arguments);
-                        return;
-                    case"items":
-                    case"editEnabled":
-                        this._clearSelectedItems();
-                        this.callBase.apply(this, arguments);
-                        return;
-                    case"editConfig":
-                        this._initEditProvider();
-                        this.callBase.apply(this, arguments);
-                        return;
+                        break;
                     case"selectedItems":
                         if (!this._selectedItemsInternalChange)
                             this._refreshSelectedItems();
-                        return;
+                        break;
                     case"itemSwipeAction":
                         this._attachSwipeEvent();
-                        return;
+                        break;
                     case"scrollAction":
                     case"pullRefresAction":
                     case"pageLoadingAction":
                         this._createScrollViewActions();
+                        this._invalidate();
+                    case"grouped":
+                        this._clearSelectedItems();
+                        delete this._renderingGroupIndex;
+                        this._initEditStrategy(value);
+                        this._invalidate();
+                    case"items":
+                    case"editEnabled":
+                        this._clearSelectedItems();
+                        this._invalidate();
+                    case"editConfig":
+                        this._initEditProvider();
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -13008,7 +13181,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         self._editStrategy.deleteItemAtIndex(index);
                         self.optionChanged.fireWith(self, [changingOption, self.option(changingOption)]);
                         self._updateSelectionAfterDelete(index);
-                        self._handleItemEvent($item, "itemDeleteAction", {isGesture: true});
+                        self._handleItemEvent($item, "itemDeleteAction", {}, {excludeValidators: ["gesture"]});
                         self._renderEmptyMessage()
                     }).fail(function() {
                         $item.removeClass(LIST_ITEM_RESPONSE_WAIT_CLASS)
@@ -13096,13 +13269,17 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _render: function() {
                 this.cellsPerColumn = 1;
-                this._element().addClass(TILEVIEW_CLASS).height(this.option("listHeight"));
+                this._element().addClass(TILEVIEW_CLASS);
+                this._renderListHeight();
                 if (!this._$wrapper)
                     this._renderWrapper();
                 this._initScrollable();
                 this.callBase();
                 this._renderGeometry();
                 this._fireContentReadyAction()
+            },
+            _renderListHeight: function() {
+                this._element().height(this.option("listHeight"))
             },
             _renderContent: function() {
                 this._renderContentImpl()
@@ -13196,12 +13373,25 @@ if (!DevExpress.MOD_WIDGETS) {
                 })
             },
             _optionChanged: function(name, value) {
-                if (name === "bounceEnabled" || name === "showScrollbar")
-                    this._initScrollable();
-                else if (name === "disabled")
-                    this._scrollView.option("disabled", value);
-                else
-                    this.callBase.apply(this, arguments)
+                switch (name) {
+                    case"bounceEnabled":
+                    case"showScrollbar":
+                        this._initScrollable();
+                        break;
+                    case"disabled":
+                        this._scrollView.option("disabled", value);
+                        break;
+                    case"baseItemWidth":
+                    case"baseItemHeight":
+                    case"itemMargin":
+                        this._renderGeometry();
+                        break;
+                    case"listHeight":
+                        this._renderListHeight();
+                        break;
+                    default:
+                        this.callBase.apply(this, arguments)
+                }
             }
         }))
     })(jQuery, DevExpress);
@@ -13269,11 +13459,11 @@ if (!DevExpress.MOD_WIDGETS) {
                     itemElement.append($("<img />").attr("src", String(item)))
             },
             _render: function() {
-                this._element().addClass(GALLERY_CLASS).on(events.addNamespace("dragstart", this.NAME), "img", function() {
-                    return false
-                });
+                this._element().addClass(GALLERY_CLASS);
+                this._renderDragHandler();
                 this._renderItemContainer();
                 this.callBase();
+                this._renderContainerPosition();
                 this._renderItemPositions();
                 this._renderIndicator();
                 this._renderSelectedIndicatorItem();
@@ -13281,15 +13471,31 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._renderNavButtons();
                 this._setupSlideShow();
                 this._reviseDimensions();
-                this._windowResizeCallback = $.proxy(this._renderItemPositions, this);
+                this._windowResizeCallback = $.proxy(this._handleWindowResize, this);
                 utils.windowResizeCallbacks.add(this._windowResizeCallback)
+            },
+            _renderDragHandler: function() {
+                var eventName = events.addNamespace("dragstart", this.NAME);
+                this._element().off(eventName).on(eventName, "img", function() {
+                    return false
+                })
             },
             _renderItemContainer: function() {
                 if (this._$container)
                     return;
                 this._$container = $("<div />").addClass(GALLERY_ITEM_CONTAINER_CLASS).appendTo(this._element())
             },
-            _renderItemPositions: function(offset, animate) {
+            _handleWindowResize: function() {
+                this._renderItemPositions();
+                this._renderContainerPosition()
+            },
+            _renderItemPositions: function() {
+                var self = this;
+                this._itemElements().each(function(index) {
+                    translator.move($(this), {left: index * self._itemWidth()})
+                })
+            },
+            _renderContainerPosition: function(offset, animate) {
                 offset = offset || 0;
                 var self = this,
                     itemWidth = this._itemWidth(),
@@ -13298,25 +13504,14 @@ if (!DevExpress.MOD_WIDGETS) {
                     targetIndex = offset - selectedIndex,
                     d = $.Deferred(),
                     animationPromises = [];
-                this._itemElements().each(function(index) {
-                    index = self._flipIndex(targetIndex + index);
-                    var lastIndex = $(this).data("dxGalleryUIIndex"),
-                        itemPosition = {left: index * itemWidth},
-                        animConfig = {
-                            type: "slide",
-                            to: itemPosition,
-                            duration: animationDuration
-                        };
-                    if (index - lastIndex > 1)
-                        animConfig.from = {left: (index + 1) * itemWidth};
-                    if (lastIndex - index > 1)
-                        animConfig.from = {left: (index - 1) * itemWidth};
-                    $(this).data("dxGalleryUIIndex", index);
-                    if (animate)
-                        animationPromises.push(fx.animate(this, animConfig));
-                    else
-                        translator.move($(this), itemPosition)
-                });
+                if (animate)
+                    animationPromises.push(fx.animate(this._$container, {
+                        type: "slide",
+                        to: {left: targetIndex * itemWidth},
+                        duration: animationDuration
+                    }));
+                else
+                    translator.move(this._$container, {left: targetIndex * itemWidth});
                 $.when.apply($, animationPromises).done(function() {
                     d.resolveWith(self)
                 });
@@ -13378,7 +13573,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 if (!instance.option("indicatorEnabled"))
                     return;
                 var index = $(e.target).index();
-                instance._renderItemPositions(instance.option("selectedIndex") - index, true).done(function() {
+                instance._renderContainerPosition(instance.option("selectedIndex") - index, true).done(function() {
                     this._suppressRenderItemPositions = true;
                     instance.option("selectedIndex", index)
                 })
@@ -13455,20 +13650,19 @@ if (!DevExpress.MOD_WIDGETS) {
                 }
             },
             _stopItemAnimations: function() {
-                if (fx.animating(this._itemElements().eq(0)))
-                    this._itemElements().each(function() {
-                        fx.stop(this, true)
-                    })
+                if (fx.animating(this._$container))
+                    fx.stop(this._$container, true)
             },
             _handleSwipeUpdate: function(e) {
-                this._renderItemPositions(e.jQueryEvent.offset)
+                this._renderContainerPosition(e.jQueryEvent.offset)
             },
             _handleSwipeEnd: function(e) {
-                this._renderItemPositions(e.jQueryEvent.targetOffset, true).done(function() {
+                this._renderContainerPosition(e.jQueryEvent.targetOffset, true).done(function() {
                     var selectedIndex = this.option("selectedIndex"),
                         newIndex = this._fitIndex(selectedIndex - e.jQueryEvent.targetOffset);
                     this._suppressRenderItemPositions = true;
                     this.option("selectedIndex", newIndex);
+                    this._renderContainerPosition();
                     this._userInteraction = false;
                     this._setupSlideShow()
                 })
@@ -13505,7 +13699,7 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _handleSelectedIndexChanged: function() {
                 if (!this._suppressRenderItemPositions)
-                    this._renderItemPositions();
+                    this._renderContainerPosition();
                 this._suppressRenderItemPositions = false;
                 this._renderSelectedIndicatorItem();
                 this._renderNavButtonsVisibility()
@@ -13543,7 +13737,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 itemIndex = this._fitIndex(itemIndex);
                 if (itemIndex > itemsCount - 1 || itemIndex < 0)
                     return d.resolveWith(this).promise();
-                this._renderItemPositions(selectedIndex - itemIndex, animation).done(function() {
+                this._renderContainerPosition(selectedIndex - itemIndex, animation).done(function() {
                     this._suppressRenderItemPositions = true;
                     this.option("selectedIndex", itemIndex);
                     d.resolveWith(this)
@@ -13614,8 +13808,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         },
                         deferRendering: true,
                         disabled: false,
-                        targetContainer: undefined,
-                        reserveTargetContainer: undefined
+                        targetContainer: undefined
                     })
             },
             _wrapper: function() {
@@ -13634,18 +13827,21 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._$wrapper = $("<div>").addClass(OVERLAY_WRAPPER_CLASS)
             },
             _initOptions: function(options) {
-                this._setTargetContainer(options.targetContainer, options.reserveTargetContainer);
+                this._setTargetContainer(options.targetContainer);
                 this._setPositionOf(this._$targetContainer);
+                if (options.backButtonHandler === undefined)
+                    this._backButtonHandler = this._defaultBackButtonHandler;
+                else
+                    this._backButtonHandler = this.backButtonHandler;
                 this.callBase(options)
             },
-            _setTargetContainer: function(targetContainer, reserveTargetContainer) {
-                var $element = this._element();
+            _setTargetContainer: function(targetContainer) {
                 targetContainer = targetContainer === undefined ? DX.overlayTargetContainer() : targetContainer;
-                var $reserveTargetContainer = reserveTargetContainer === undefined ? $element.parent() : $(reserveTargetContainer);
-                var $targetContainer = $element.closest(targetContainer);
+                var $element = this._element(),
+                    $targetContainer = $element.closest(targetContainer);
                 if (!$targetContainer.length)
                     $targetContainer = $(targetContainer).first();
-                this._$targetContainer = $targetContainer.length ? $targetContainer : $reserveTargetContainer
+                this._$targetContainer = $targetContainer.length ? $targetContainer : $element.parent()
             },
             _setPositionOf: function(target) {
                 this.option("position.of", target)
@@ -13759,6 +13955,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 DX.position(this._$container, this.option("position"))
             },
             _subscribeParentScroll: function() {
+                if (!this.option("position"))
+                    return;
                 var self = this,
                     closeOnScroll = self.option("closeOnTargetScroll"),
                     $element = self.option("position").of;
@@ -13772,6 +13970,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 })
             },
             _unsubscribeParentScroll: function() {
+                if (!this.option("position"))
+                    return;
                 var self = this,
                     closeOnScroll = self.option("closeOnTargetScroll"),
                     $element = self.option("position").of;
@@ -13858,13 +14058,29 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._$wrapper.toggle(visible);
                 this._$wrapper.toggleClass(OVERLAY_SHADER_CLASS, this.option("shading") && visible)
             },
+            _defaultBackButtonHandler: function() {
+                this.hide()
+            },
+            _toggleBackButtonCallback: function() {
+                if (this._backButtonHandler)
+                    if (this.option("visible")) {
+                        this.closeCallback = $.proxy(this._backButtonHandler, this);
+                        DX.backButtonCallback.add(this.closeCallback)
+                    }
+                    else if (this.closeCallback)
+                        DX.backButtonCallback.remove(this.closeCallback)
+            },
             _optionChanged: function(name, value) {
                 if ($.inArray(name, ACTIONS) > -1) {
                     this._renderActions();
                     return
                 }
                 switch (name) {
+                    case"position":
+                        this._renderPosition();
+                        break;
                     case"visible":
+                        this._toggleBackButtonCallback();
                         this._renderVisibilityAnimate();
                         break;
                     case"targetContainer":
@@ -13880,12 +14096,6 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             toggle: function(showing) {
                 showing = showing === undefined ? !this.option("visible") : showing;
-                if (showing) {
-                    this.closeCallback = $.proxy(this.hide, this);
-                    DX.backButtonCallback.add(this.closeCallback)
-                }
-                else if (this.closeCallback)
-                    DX.backButtonCallback.remove(this.closeCallback);
                 if (showing === this.option("visible"))
                     return $.Deferred().resolve().promise();
                 this._deferredAnimate = $.Deferred();
@@ -14183,10 +14393,6 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"title":
                         this._renderTitle();
                         break;
-                    case"fullScreen":
-                        this._$container.toggleClass(POPUP_FULL_SCREEN_CLASS, value);
-                        this.callBase.apply(this, arguments);
-                        break;
                     case"cancelButton":
                         this._renderCancelButton();
                         break;
@@ -14199,6 +14405,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     case"closeButton":
                         this._renderCloseButton();
                         break;
+                    case"fullScreen":
+                        this._$container.toggleClass(POPUP_FULL_SCREEN_CLASS, value);
+                        this._invalidate();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -14263,9 +14472,12 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._updateContentSize()
             },
             _updateContentSize: function() {
-                var height = this._$content.height(),
+                if (!this._$content)
+                    return;
+                var height = this._$container.outerHeight(),
+                    containerMargin = height - this._$content.height(),
                     targetHeight = $(this.option("target")).outerHeight(),
-                    maxHeight = $(window).height() * 0.5 - this._$arrow.outerHeight() - targetHeight;
+                    maxHeight = ($(window).height() - targetHeight) * 0.5 - this._$arrow.height() - containerMargin;
                 if (height > maxHeight)
                     this._$content.height(maxHeight)
             },
@@ -14285,7 +14497,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._setPositionOf(this.option("target"))
             },
             _renderPosition: function() {
-                this._wrapper().show();
+                this._updateContentSize();
                 var arrowPosition = $.extend({}, this.option("position"));
                 var containerPosition = $.extend({}, arrowPosition, {offset: "0 " + this._$arrow.height()}),
                     containerLocation = DX.calculatePosition(this._$container, containerPosition),
@@ -14766,6 +14978,8 @@ if (!DevExpress.MOD_WIDGETS) {
                         if (value)
                             this._refreshRollers();
                         break;
+                    case"value":
+                        this._invalidate();
                     default:
                         this.callBase(name, value, prevValue)
                 }
@@ -14834,6 +15048,8 @@ if (!DevExpress.MOD_WIDGETS) {
                         this._renderValue();
                         this._renderDatePicker();
                         break;
+                    case"useNativePicker":
+                        this._invalidate();
                     default:
                         this.callBase(name, value, prevValue)
                 }
@@ -14920,9 +15136,10 @@ if (!DevExpress.MOD_WIDGETS) {
         var ui = DX.ui;
         var LOADPANEL_CLASS = "dx-loadpanel",
             LOADPANEL_WRAPPER_CLASS = LOADPANEL_CLASS + "-wrapper",
+            LOADPANEL_INDICATOR_CLASS = LOADPANEL_CLASS + "-indicator",
             LOADPANEL_MESSAGE_CLASS = LOADPANEL_CLASS + "-message",
             LOADPANEL_CONTENT_CLASS = LOADPANEL_CLASS + "-content",
-            LOADPANEL_HAS_INDICATOR = LOADPANEL_CLASS + "-has-indicator";
+            LOADPANEL_HAS_INDICATOR_CLASS = LOADPANEL_CLASS + "-has-indicator";
         ui.registerComponent("dxLoadPanel", ui.dxOverlay.inherit({
             _defaultOptions: function() {
                 return $.extend(this.callBase(), {
@@ -14942,15 +15159,24 @@ if (!DevExpress.MOD_WIDGETS) {
             _renderContentImpl: function() {
                 this.callBase();
                 this.content().addClass(LOADPANEL_CONTENT_CLASS);
+                this._cleanPreviousContent();
                 this._renderLoadIndicator();
                 this._renderMessage()
             },
+            _cleanPreviousContent: function() {
+                this.content().find("." + LOADPANEL_MESSAGE_CLASS).remove();
+                this.content().find("." + LOADPANEL_INDICATOR_CLASS).remove()
+            },
             _renderMessage: function() {
-                $("<div>").addClass(LOADPANEL_MESSAGE_CLASS).toggleClass(LOADPANEL_HAS_INDICATOR, this.option("showIndicator")).text(this.option("message")).appendTo(this.content())
+                var $message = $("<div>").addClass(LOADPANEL_MESSAGE_CLASS).toggleClass(LOADPANEL_HAS_INDICATOR_CLASS, this.option("showIndicator")).text(this.option("message"));
+                this.content().append($message)
             },
             _renderLoadIndicator: function() {
-                if (this.option("showIndicator"))
-                    $("<div>").dxLoadIndicator().appendTo(this.content())
+                if (!this.option("showIndicator"))
+                    return;
+                var $indicator = $("<div>").addClass(LOADPANEL_INDICATOR_CLASS);
+                this.content().append($indicator);
+                $indicator.dxLoadIndicator()
             },
             _clean: function() {
                 this.content().empty()
@@ -15064,7 +15290,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 self._renderContentIfNeed();
                 self._setListDataSource();
                 self._refreshSelected();
-                self._popup.show()
+                self._popup.show();
+                self._popup.content().on("MSPointerDown", function(e){})
             },
             _renderContentIfNeed: function() {
                 if (this._needRenderContent) {
@@ -15275,6 +15502,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 $(e.target).closest(LIST_ITEM_SELECTOR).addClass(LOOKUP_SELECTED_CLASS)
             },
             _hidePopup: function() {
+                this._popup.content().off("MSPointerDown");
                 this._popup.hide()
             },
             _updateAndHidePopup: function() {
@@ -15551,6 +15779,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         break;
                     case"items":
                         this._attachClickEvent();
+                        this._$itemContainer.empty();
                         this._renderContent();
                         this._popup._refresh();
                         break;
@@ -15601,7 +15830,9 @@ if (!DevExpress.MOD_WIDGETS) {
                 updateZoom: DX.abstract,
                 updateControls: DX.abstract,
                 updateMarkers: DX.abstract,
+                addMarkers: DX.abstract,
                 updateRoutes: DX.abstract,
+                addRoutes: DX.abstract,
                 clean: DX.abstract,
                 cancelEvents: false,
                 map: function() {
@@ -15621,6 +15852,10 @@ if (!DevExpress.MOD_WIDGETS) {
                 },
                 _createAction: function() {
                     return this._mapInstance._createAction.apply(this._mapInstance, $.makeArray(arguments))
+                },
+                _handleClickAction: function() {
+                    var clickAction = this._createAction(this._option("clickAction") || $.noop);
+                    clickAction()
                 }
             });
         var BING_MAP_READY = "_bingScriptReady",
@@ -15701,7 +15936,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 })
             },
             render: function() {
-                var initPromise = $.Deferred(),
+                var deferred = $.Deferred(),
+                    initPromise = $.Deferred(),
                     controls = this._option("controls");
                 var options = {
                         credentials: this._key("bing") || BING_CREDENTIALS,
@@ -15714,12 +15950,15 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._map = new Microsoft.Maps.Map(this._$container[0], options);
                 var handler = Microsoft.Maps.Events.addHandler(this._map, 'tiledownloadcomplete', $.proxy(initPromise.resolve, initPromise));
                 this._viewChangeHandler = Microsoft.Maps.Events.addHandler(this._map, 'viewchange', $.proxy(this._handleViewChange, this));
+                this._clickHandler = Microsoft.Maps.Events.addHandler(this._map, 'click', $.proxy(this._handleClickAction, this));
                 var locationPromise = this._renderLocation();
                 var markersPromise = this._renderMarkers();
                 var routesPromise = this._renderRoutes();
-                return $.when(initPromise, locationPromise, markersPromise, routesPromise).done(function() {
-                        Microsoft.Maps.Events.removeHandler(handler)
-                    })
+                $.when(initPromise, locationPromise, markersPromise, routesPromise).done(function() {
+                    Microsoft.Maps.Events.removeHandler(handler);
+                    deferred.resolve(true)
+                });
+                return deferred.promise()
             },
             _handleViewChange: function() {
                 var center = this._map.getCenter();
@@ -15737,13 +15976,16 @@ if (!DevExpress.MOD_WIDGETS) {
                 return this._renderLocation()
             },
             _renderLocation: function() {
-                var self = this;
-                return this._resolveLocation(this._option("location")).done(function(location) {
-                        self._map.setView({
-                            animate: false,
-                            center: location
-                        })
-                    })
+                var deferred = $.Deferred(),
+                    self = this;
+                this._resolveLocation(this._option("location")).done(function(location) {
+                    self._map.setView({
+                        animate: false,
+                        center: location
+                    });
+                    deferred.resolve()
+                });
+                return deferred.promise()
             },
             updateZoom: function() {
                 this._map.setView({
@@ -15757,17 +15999,29 @@ if (!DevExpress.MOD_WIDGETS) {
                 return this.render()
             },
             updateMarkers: function() {
+                return this._refreshMarkers()
+            },
+            addMarkers: function(options) {
+                return this._renderMarkers(options)
+            },
+            _refreshMarkers: function() {
+                this._clearMarkers();
                 return this._renderMarkers()
             },
-            _renderMarkers: function() {
-                var self = this;
-                this._clearMarkers();
-                var markerPromises = $.map(this._option("markers"), function(markerOptions) {
-                        return self._renderMarker(markerOptions).done(function(marker) {
-                                self._markers.push(marker)
-                            })
+            _renderMarkers: function(options) {
+                options = options || this._option("markers");
+                var deferred = $.Deferred(),
+                    self = this;
+                var markerPromises = $.map(options, function(markerOptions) {
+                        return self._addMarker(markerOptions)
                     });
-                return $.when.apply($, markerPromises)
+                $.when.apply($, markerPromises).done(function() {
+                    var instances = $.map($.makeArray(arguments), function(marker) {
+                            return marker.pushpin
+                        });
+                    deferred.resolve(false, instances)
+                });
+                return deferred.promise()
             },
             _clearMarkers: function() {
                 var self = this;
@@ -15779,6 +16033,12 @@ if (!DevExpress.MOD_WIDGETS) {
                         Microsoft.Maps.Events.removeHandler(marker.handler)
                 });
                 this._markers = []
+            },
+            _addMarker: function(options) {
+                var self = this;
+                return this._renderMarker(options).done(function(marker) {
+                        self._markers.push(marker)
+                    })
             },
             _renderMarker: function(options) {
                 var d = $.Deferred(),
@@ -15812,17 +16072,26 @@ if (!DevExpress.MOD_WIDGETS) {
                 return d.promise()
             },
             updateRoutes: function() {
+                return this._refreshRoutes()
+            },
+            addRoutes: function(options) {
+                return this._renderRoutes(options)
+            },
+            _refreshRoutes: function() {
+                this._clearRoutes();
                 return this._renderRoutes()
             },
-            _renderRoutes: function() {
-                var self = this;
-                this._clearRoutes();
-                var routePromises = $.map(this._option("routes"), function(routeOptions) {
-                        return self._renderRoute(routeOptions).done(function(route) {
-                                self._routes.push(route)
-                            })
+            _renderRoutes: function(options) {
+                options = options || this._option("routes");
+                var deferred = $.Deferred(),
+                    self = this;
+                var routePromises = $.map(options, function(routeOptions) {
+                        return self._addRoute(routeOptions)
                     });
-                return $.when.apply($, routePromises)
+                $.when.apply($, routePromises).done(function() {
+                    deferred.resolve(false, $.makeArray(arguments))
+                });
+                return deferred.promise()
             },
             _clearRoutes: function() {
                 var self = this;
@@ -15830,6 +16099,12 @@ if (!DevExpress.MOD_WIDGETS) {
                     route.dispose()
                 });
                 this._routes = []
+            },
+            _addRoute: function(routeOptions) {
+                var self = this;
+                return this._renderRoute(routeOptions).done(function(route) {
+                        self._routes.push(route)
+                    })
             },
             _renderRoute: function(options) {
                 var d = $.Deferred(),
@@ -15875,6 +16150,7 @@ if (!DevExpress.MOD_WIDGETS) {
             clean: function() {
                 if (this._map) {
                     Microsoft.Maps.Events.removeHandler(this._viewChangeHandler);
+                    Microsoft.Maps.Events.removeHandler(this._clickHandler);
                     this._clearMarkers();
                     this._clearRoutes();
                     this._map.dispose()
@@ -15942,7 +16218,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 googleMapsLoader.resolve()
             },
             render: function() {
-                var initPromise = $.Deferred(),
+                var deferred = $.Deferred(),
+                    initPromise = $.Deferred(),
                     controls = this._option("controls");
                 var options = {
                         zoom: this._option("zoom"),
@@ -15957,12 +16234,15 @@ if (!DevExpress.MOD_WIDGETS) {
                 var listner = google.maps.event.addListener(this._map, 'idle', $.proxy(initPromise.resolve, initPromise));
                 this._zoomChangeListener = google.maps.event.addListener(this._map, 'zoom_changed', $.proxy(this._handleZoomChange, this));
                 this._centerChangeListener = google.maps.event.addListener(this._map, 'center_changed', $.proxy(this._handleCenterChange, this));
+                this._clickListener = google.maps.event.addListener(this._map, 'click', $.proxy(this._handleClickAction, this));
                 var locationPromise = this._renderLocation();
                 var markersPromise = this._renderMarkers();
                 var routesPromise = this._renderRoutes();
-                return $.when(initPromise, locationPromise, markersPromise, routesPromise).done(function() {
-                        google.maps.event.removeListener(listner)
-                    })
+                $.when(initPromise, locationPromise, markersPromise, routesPromise).done(function() {
+                    google.maps.event.removeListener(listner);
+                    deferred.resolve(true)
+                });
+                return deferred.promise()
             },
             updateDimensions: function() {
                 google.maps.event.trigger(this._map, 'resize');
@@ -15980,10 +16260,13 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._option("location", this._normalizeLocation(center))
             },
             _renderLocation: function() {
-                var self = this;
-                return this._resolveLocation(this._option("location")).done(function(location) {
-                        self._map.setCenter(location)
-                    })
+                var deferred = $.Deferred(),
+                    self = this;
+                this._resolveLocation(this._option("location")).done(function(location) {
+                    self._map.setCenter(location);
+                    deferred.resolve()
+                });
+                return deferred.promise()
             },
             _handleZoomChange: function() {
                 this._option("zoom", this._map.getZoom())
@@ -16000,20 +16283,14 @@ if (!DevExpress.MOD_WIDGETS) {
                     mapTypeControl: controls,
                     streetViewControl: controls
                 });
-                return this.render()
+                return $.Deferred().resolve().promise()
             },
             updateMarkers: function() {
-                return this._renderMarkers()
+                return this._refreshMarkers()
             },
-            _renderMarkers: function() {
-                var self = this;
+            _refreshMarkers: function() {
                 this._clearMarkers();
-                var markerPromises = $.map(this._option("markers"), function(markerOptions) {
-                        return self._renderMarker(markerOptions).done(function(marker) {
-                                self._markers.push(marker)
-                            })
-                    });
-                return $.when.apply($, markerPromises)
+                return this._renderMarkers()
             },
             _clearMarkers: function() {
                 var self = this;
@@ -16023,6 +16300,30 @@ if (!DevExpress.MOD_WIDGETS) {
                         google.maps.event.removeListener(marker.listner)
                 });
                 this._markers = []
+            },
+            addMarkers: function(options) {
+                return this._renderMarkers(options)
+            },
+            _renderMarkers: function(options) {
+                options = options || this._option("markers");
+                var deferred = $.Deferred(),
+                    self = this;
+                var markerPromises = $.map(options, function(markerOptions) {
+                        return self._addMarker(markerOptions)
+                    });
+                $.when.apply($, markerPromises).done(function() {
+                    var instances = $.map($.makeArray(arguments), function(marker) {
+                            return marker.instance
+                        });
+                    deferred.resolve(false, instances)
+                });
+                return deferred.promise()
+            },
+            _addMarker: function(options) {
+                var self = this;
+                return this._renderMarker(options).done(function(marker) {
+                        self._markers.push(marker)
+                    })
             },
             _renderMarker: function(options) {
                 var d = $.Deferred(),
@@ -16054,17 +16355,14 @@ if (!DevExpress.MOD_WIDGETS) {
                 return d.promise()
             },
             updateRoutes: function() {
+                return this._refreshRoutes()
+            },
+            addRoutes: function(options) {
                 return this._renderRoutes()
             },
-            _renderRoutes: function() {
-                var self = this;
+            _refreshRoutes: function() {
                 this._clearRoutes();
-                var routePromises = $.map(this._option("routes"), function(routeOptions) {
-                        return self._renderRoute(routeOptions).done(function(route) {
-                                self._routes.push(route)
-                            })
-                    });
-                return $.when.apply($, routePromises)
+                return this._renderRoutes()
             },
             _clearRoutes: function() {
                 var self = this;
@@ -16072,6 +16370,24 @@ if (!DevExpress.MOD_WIDGETS) {
                     route.setMap(null)
                 });
                 this._routes = []
+            },
+            _renderRoutes: function(options) {
+                options = options || this._option("routes");
+                var deferred = $.Deferred(),
+                    self = this;
+                var routePromises = $.map(options, function(routeOptions) {
+                        return self._addRoute(routeOptions)
+                    });
+                $.when.apply($, routePromises).done(function() {
+                    deferred.resolve(false, $.makeArray(arguments))
+                });
+                return deferred.promise()
+            },
+            _addRoute: function(options) {
+                var self = this;
+                return this._renderRoute(options).done(function(route) {
+                        self._routes.push(route)
+                    })
             },
             _renderRoute: function(options) {
                 var d = $.Deferred(),
@@ -16122,6 +16438,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 if (this._map) {
                     google.maps.event.removeListener(this._zoomChangeListener);
                     google.maps.event.removeListener(this._centerChangeListener);
+                    google.maps.event.removeListener(this._clickListener);
                     this._clearMarkers();
                     this._clearRoutes();
                     delete this._map;
@@ -16157,7 +16474,13 @@ if (!DevExpress.MOD_WIDGETS) {
             updateMarkers: function() {
                 return this._updateMap()
             },
+            addMarkers: function() {
+                return this._updateMap()
+            },
             updateRoutes: function() {
+                return this._updateMap()
+            },
+            addRoutes: function() {
                 return this._updateMap()
             },
             clean: function() {
@@ -16178,7 +16501,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         requestOptions.push("key=" + self._key("googleStatic"));
                     var request = GOOGLE_STATIC_URL + requestOptions.join("&");
                     self._$container.css("background", "url(\"" + request + "\") no-repeat 0 0");
-                    deferred.resolve()
+                    deferred.resolve(true)
                 });
                 return deferred.promise()
             },
@@ -16266,7 +16589,8 @@ if (!DevExpress.MOD_WIDGETS) {
                             googleStatic: ""
                         },
                         controls: false,
-                        readyAction: null
+                        readyAction: null,
+                        updateAction: null
                     })
             },
             _init: function() {
@@ -16354,24 +16678,34 @@ if (!DevExpress.MOD_WIDGETS) {
                         this.callBase.apply(this, arguments);
                         break;
                     case"readyAction":
+                    case"updateAction":
                         break;
                     default:
                         this.callBase.apply(this, arguments)
                 }
             },
-            _execAsyncProviderAction: function(action) {
-                if (!this._provider.mapRendered() && !(action === "render"))
+            _execAsyncProviderAction: function(name) {
+                if (!this._provider.mapRendered() && !(name === "render"))
                     return;
-                var self = this;
-                return $.when(this._mapLoader).done(function() {
-                        var deferred = self._provider[action]();
-                        deferred.done(function() {
-                            self._triggerReadyAction()
-                        })
+                var deferred = $.Deferred(),
+                    self = this,
+                    options = $.makeArray(arguments).slice(1);
+                $.when(this._mapLoader).done(function() {
+                    var provider = self._provider;
+                    provider[name].apply(provider, options).done(function(mapRefreshed) {
+                        self._triggerUpdateAction();
+                        if (mapRefreshed)
+                            self._triggerReadyAction();
+                        deferred.resolve.apply(deferred, $.makeArray(arguments).slice(1))
                     })
+                });
+                return deferred.promise()
             },
             _triggerReadyAction: function() {
                 this._createActionByOption("readyAction")({originalMap: this._provider.map()})
+            },
+            _triggerUpdateAction: function() {
+                this._createActionByOption("updateAction")()
             },
             setOptionSilent: function(name, value) {
                 this._cancelOptionChange = true;
@@ -16383,11 +16717,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     self = this,
                     markersOption = this._options.markers,
                     markers = wrapToArray(markerOptions);
-                $.each(markers, function(_, marker) {
-                    markersOption.push(marker)
-                });
-                this._execAsyncProviderAction("updateMarkers").done(function() {
-                    d.resolveWith(self)
+                markersOption.push.apply(markersOption, markers);
+                this._execAsyncProviderAction("addMarkers", markers).done(function(instance) {
+                    d.resolveWith(self, markers.length > 1 ? [instance] : instance)
                 });
                 return d.promise()
             },
@@ -16413,11 +16745,9 @@ if (!DevExpress.MOD_WIDGETS) {
                     self = this,
                     routesOption = this._options.routes,
                     routes = wrapToArray(routeOptions);
-                $.each(routes, function(_, route) {
-                    routesOption.push(route)
-                });
-                this._execAsyncProviderAction("updateRoutes").done(function() {
-                    d.resolveWith(self)
+                routesOption.push.apply(routesOption, routes);
+                this._execAsyncProviderAction("addRoutes", routes).done(function(instance) {
+                    d.resolveWith(self, routes.length > 1 ? [instance] : instance)
                 });
                 return d.promise()
             },
@@ -16481,7 +16811,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         value: "",
                         items: [],
                         dataSource: null,
-                        itemTemplate: "item",
+                        itemTemplate: null,
                         itemRender: null,
                         minSearchLength: 1,
                         searchTimeout: 0,
@@ -16673,11 +17003,14 @@ if (!DevExpress.MOD_WIDGETS) {
                 var $textbox = this._textboxElement(),
                     textWidth = $textbox.width(),
                     $input = this._textbox._input(),
-                    vOffset = 0;
+                    vOffset = 0,
+                    hOffset = 0;
                 if (DX.devices.current().win8)
                     vOffset = -2;
                 else if (DX.devices.current().platform === "desktop" || DX.devices.current().tizen)
                     vOffset = -1;
+                if (DX.devices.current().platform === "desktop")
+                    hOffset = -1;
                 this._popup = $("<div/>").appendTo(this._element()).dxPopup({
                     shading: false,
                     closeOnOutsideClick: true,
@@ -16693,7 +17026,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         at: "left bottom",
                         of: $input,
                         offset: {
-                            h: 0,
+                            h: hOffset,
                             v: vOffset
                         },
                         collision: "flip"
@@ -16735,13 +17068,17 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._list = $("<div />").appendTo(this._popup.content()).dxList({
                     itemClickAction: $.proxy(this._handleListItemClick, this),
                     itemTemplate: this.option("itemTemplate"),
-                    itemRender: this.option("itemRender"),
+                    itemRender: this._getItemRender(),
                     noDataText: "",
                     showNextButton: false,
                     autoPagingEnabled: false,
                     dataSource: this._dataSource
                 }).data("dxList");
                 this._list._templates = this._templates
+            },
+            _getItemRender: function() {
+                if (!this.option("itemTemplate"))
+                    return this.option("itemRender") || $.proxy(this._displayGetter, this)
             },
             _handleListItemClick: function(e) {
                 var value = this._displayGetter(e.itemData);
@@ -16798,6 +17135,7 @@ if (!DevExpress.MOD_WIDGETS) {
             _optionChanged: function(name, value) {
                 switch (name) {
                     case"disabled":
+                        this.callBase(name, value);
                         this._textboxOptionChange(name, value);
                         break;
                     case"value":
@@ -16823,6 +17161,7 @@ if (!DevExpress.MOD_WIDGETS) {
                         break;
                     case"displayExpr":
                         this._compileDisplayGetter();
+                        this._list.option("itemRender", this._getItemRender());
                         break;
                     case"minSearchLength":
                     case"searchTimeout":
@@ -16871,8 +17210,7 @@ if (!DevExpress.MOD_WIDGETS) {
         var DROP_DOWN_MENU_CLASS = "dx-dropdownmenu",
             DROP_DOWN_MENU_POPUP_WRAPPER_CLASS = DROP_DOWN_MENU_CLASS + "-popup-wrapper",
             DROP_DOWN_MENU_LIST_CLASS = "dx-dropdownmenu-list",
-            DROP_DOWN_MENU_BUTTON_CLASS = "dx-dropdownmenu-button",
-            RESERVE_TERGET_CONTAINER = "body";
+            DROP_DOWN_MENU_BUTTON_CLASS = "dx-dropdownmenu-button";
         ui.registerComponent("dxDropDownMenu", ui.ContainerWidget.inherit({
             _defaultOptions: function() {
                 return $.extend(this.callBase(), {
@@ -16890,7 +17228,11 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _init: function() {
                 this.callBase();
-                this._initDataSource()
+                this._initDataSource();
+                this._initItemClickAction()
+            },
+            _initItemClickAction: function() {
+                this._itemClickAction = this._createActionByOption("itemClickAction")
             },
             _render: function() {
                 this._element().addClass(DROP_DOWN_MENU_CLASS);
@@ -16929,17 +17271,21 @@ if (!DevExpress.MOD_WIDGETS) {
                 e.component._popup.toggle()
             },
             _renderList: function(instance) {
-                var $content = instance.content();
-                this._list = $content.addClass(DROP_DOWN_MENU_LIST_CLASS).dxList({
+                var $content = instance.content(),
+                    self = this;
+                self._list = $content.addClass(DROP_DOWN_MENU_LIST_CLASS).dxList({
                     autoPagingEnabled: false,
                     noDataText: "",
-                    itemRender: this.option("itemRender"),
-                    itemTemplate: this.option("itemTemplate"),
-                    itemClickAction: this.option("itemClickAction")
+                    itemRender: self.option("itemRender"),
+                    itemTemplate: self.option("itemTemplate"),
+                    itemClickAction: function(e) {
+                        self._popup.hide();
+                        self._itemClickAction(e)
+                    }
                 }).data("dxList");
-                this._list._templates = this._templates;
-                this._setListDataSource();
-                this._attachListClick();
+                self._list._templates = self._templates;
+                self._setListDataSource();
+                self._attachListClick();
                 var listMaxHeight = $(window).height() * 0.5;
                 if ($content.height() > listMaxHeight)
                     $content.height(listMaxHeight)
@@ -16962,8 +17308,7 @@ if (!DevExpress.MOD_WIDGETS) {
                 var popupOptions = {
                         clickAction: this.option("clickAction"),
                         contentReadyAction: $.proxy(this._popupContentReadyHandler, this),
-                        deferRendering: false,
-                        reserveTargetContainer: RESERVE_TERGET_CONTAINER
+                        deferRendering: false
                     };
                 this._popup = this.option("usePopover") ? this._createPopover($popup, popupOptions) : this._createPopup($popup, popupOptions);
                 this._popup._wrapper().addClass(DROP_DOWN_MENU_POPUP_WRAPPER_CLASS)
@@ -17023,6 +17368,8 @@ if (!DevExpress.MOD_WIDGETS) {
                         if (this._list)
                             this._list.option(name, value);
                         break;
+                    case"itemClickAction":
+                        this._initItemClickAction();
                     default:
                         this.callBase.apply(this, arguments)
                 }
@@ -17044,7 +17391,8 @@ if (!DevExpress.MOD_WIDGETS) {
                         value: undefined,
                         valueChangeAction: null,
                         placeholder: Globalize.localize("Select"),
-                        valueExpr: null
+                        valueExpr: null,
+                        tooltipEnabled: false
                     })
             },
             _init: function() {
@@ -17055,9 +17403,28 @@ if (!DevExpress.MOD_WIDGETS) {
             _itemsToDataSource: function() {
                 this._dataSource = new DevExpress.data.DataSource(this.option("items"))
             },
+            _getValueWidth: function(value) {
+                var d = document.createElement('div');
+                d.innerHTML = value;
+                d.style.width = "auto";
+                d.style.position = "fixed";
+                d.style.top = "-3000px";
+                d.style.left = "-3000px";
+                document.body.appendChild(d);
+                return d.scrollWidth
+            },
+            _setTooltip: function(value) {
+                if (!this.option("tooltipEnabled"))
+                    return;
+                if (this._$element.context.scrollWidth <= this._getValueWidth(value))
+                    this._$element.context.title = value;
+                else
+                    this._$element.context.title = ""
+            },
             _render: function() {
                 this._compileValueGetter();
                 this.callBase();
+                this._setTooltip(this.option("value"));
                 this._setWidgetClasses();
                 this._renderArrowDown()
             },
@@ -17125,7 +17492,8 @@ if (!DevExpress.MOD_WIDGETS) {
                 this.option("value", this._valueGetter(this._selectedItem))
             },
             _changeValue: function(value) {
-                this._searchValue(value).done($.proxy(this._handleSearchComplete, this))
+                this._searchValue(value).done($.proxy(this._handleSearchComplete, this));
+                this._setTooltip(value)
             },
             _handleSearchComplete: function(result) {
                 this._selectedItem = result;
@@ -17731,7 +18099,9 @@ if (!DevExpress.MOD_WIDGETS) {
             _defaultOptions: function() {
                 return $.extend(this.callBase(), {
                         menuItemRender: null,
-                        menuItemTemplate: "item"
+                        menuItemTemplate: "menuItem",
+                        swipeEnabled: true,
+                        menuVisible: false
                     })
             },
             _itemClass: function() {
@@ -17749,10 +18119,20 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._renderList();
                 this._initSwipeHandlers();
                 this._element().addClass(SLIDEOUT_CLASS);
-                this.callBase()
+                this.callBase();
+                this._initWindowResizeCallback();
+                this._renderPosition(this.option("menuVisible") ? 1 : 0, false)
+            },
+            _initWindowResizeCallback: function() {
+                var self = this;
+                this._windowResizeCallback = function() {
+                    self._renderPosition(self.option("menuVisible") ? 1 : 0, false)
+                };
+                utils.windowResizeCallbacks.add(this._windowResizeCallback)
             },
             _renderItemsContainer: function() {
-                this._$container = $("<div />").addClass(SLIDEOUT_ITEM_CONTAINER_CLASS).appendTo(this._element())
+                this._$container = $("<div />").addClass(SLIDEOUT_ITEM_CONTAINER_CLASS).appendTo(this._element());
+                this._$container.on("MSPointerDown", function(e){})
             },
             _renderContentImpl: function(template) {
                 var items = this.option("items"),
@@ -17790,30 +18170,39 @@ if (!DevExpress.MOD_WIDGETS) {
                 this._renderContent()
             },
             _initSwipeHandlers: function() {
+                var swipeStartEvent = events.addNamespace("dxswipestart", this.NAME),
+                    swipeEvent = events.addNamespace("dxswipe", this.NAME),
+                    swipeEndEvent = events.addNamespace("dxswipeend", this.NAME);
+                this._$container.off(swipeStartEvent).off(swipeEvent).off(swipeEndEvent);
+                if (!this.option("swipeEnabled"))
+                    return;
                 var eventData = {
                         elastic: false,
                         itemSizeFunc: $.proxy(this._getListWidth, this)
                     };
-                this._$container.on(events.addNamespace("dxswipestart", this.NAME), $.proxy(this._handleSwipeStart, this)).on(events.addNamespace("dxswipe", this.NAME), eventData, $.proxy(this._handleSwipeUpdate, this)).on(events.addNamespace("dxswipeend", this.NAME), $.proxy(this._handleSwipeEnd, this))
+                this._$container.on(swipeStartEvent, $.proxy(this._handleSwipeStart, this)).on(swipeEvent, eventData, $.proxy(this._handleSwipeUpdate, this)).on(swipeEndEvent, $.proxy(this._handleSwipeEnd, this))
             },
             _handleSwipeStart: function(e) {
-                e.maxLeftOffset = this._menuShown ? 1 : 0;
-                e.maxRightOffset = this._menuShown ? 0 : 1
+                e.maxLeftOffset = this.option("menuVisible") ? 1 : 0;
+                e.maxRightOffset = this.option("menuVisible") ? 0 : 1
             },
             _handleSwipeUpdate: function(e) {
-                var offset = this._menuShown ? e.offset + 1 : e.offset;
+                var offset = this.option("menuVisible") ? e.offset + 1 : e.offset;
                 this._renderPosition(offset, false)
             },
             _handleSwipeEnd: function(e) {
-                var targetOffset = e.targetOffset + this._menuShown;
-                this._toggleMenuVisibility(targetOffset !== 0, true)
+                var targetOffset = e.targetOffset + this.option("menuVisible"),
+                    menuVisible = targetOffset !== 0;
+                if (this.option("menuVisible") === menuVisible)
+                    this._renderPosition(this.option("menuVisible") ? 1 : 0, true);
+                else
+                    this.option("menuVisible", targetOffset !== 0)
             },
             _handleMenuButtonClick: function() {
-                this._toggleMenuVisibility(!this._menuShown, true)
+                this.option("menuVisible", !this.option("menuVisible"))
             },
             _toggleMenuVisibility: function(visible, animate) {
-                this._menuShown = visible;
-                this._renderPosition(this._menuShown ? 1 : 0, animate)
+                this.option("menuVisible", visible)
             },
             _renderPosition: function(offset, animate) {
                 var pos = this._calculatePixelOffset(offset);
@@ -17842,6 +18231,12 @@ if (!DevExpress.MOD_WIDGETS) {
             },
             _optionChanged: function(name, value, prevValue) {
                 switch (name) {
+                    case"menuVisible":
+                        this._renderPosition(value ? 1 : 0, true);
+                        break;
+                    case"swipeEnabled":
+                        this._initSwipeHandlers();
+                        break;
                     case"menuItemRender":
                         this._changeMenuOption("itemRender", value);
                         break;
@@ -17859,6 +18254,10 @@ if (!DevExpress.MOD_WIDGETS) {
                 if (this._deferredAnimate)
                     this._deferredAnimate.resolveWith(this)
             },
+            _dispose: function() {
+                utils.windowResizeCallbacks.remove(this._windowResizeCallback);
+                this.callBase()
+            },
             showMenu: function() {
                 return this.toggleMenuVisibility(true)
             },
@@ -17866,9 +18265,9 @@ if (!DevExpress.MOD_WIDGETS) {
                 return this.toggleMenuVisibility(false)
             },
             toggleMenuVisibility: function(showing) {
-                showing = showing === undefined ? !this._menuShown : showing;
+                showing = showing === undefined ? !this.option("menuVisible") : showing;
                 this._deferredAnimate = $.Deferred();
-                this._toggleMenuVisibility(showing, true);
+                this.option("menuVisible", showing);
                 return this._deferredAnimate.promise()
             }
         }))
@@ -18252,14 +18651,14 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 defaults: {
                     showIcon: false,
                     showText: true,
-                    align: "right"
+                    location: "right"
                 },
                 commands: ["edit", "save", {
                         id: "back",
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "cancel",
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "create",
                         showIcon: true,
@@ -18287,103 +18686,131 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 defaults: {
                     showIcon: true,
                     showText: false,
-                    align: "right"
+                    location: "right"
                 },
                 commands: ["create", "edit", "save", {
                         id: "delete",
                         showText: true,
-                        menu: true
+                        location: "menu"
                     }]
             },
             "android-simple-toolbar": {
                 defaults: {
                     showIcon: true,
                     showText: false,
-                    align: "right"
+                    location: "right"
                 },
                 commands: [{
                         id: "back",
-                        align: "left",
-                        showIcon: false
+                        showIcon: false,
+                        location: "left"
                     }, {id: "create"}, {
                         id: "save",
-                        align: "left",
-                        showText: true
+                        showText: true,
+                        location: "left"
                     }, {
                         id: "edit",
                         showText: true,
-                        menu: true
+                        location: "menu"
                     }, {
                         id: "cancel",
                         showText: true,
-                        menu: true
+                        location: "menu"
                     }, {
                         id: "delete",
                         showText: true,
-                        menu: true
+                        location: "menu"
                     }]
             },
             "android-footer-toolbar": {
-                defaults: {align: "right"},
+                defaults: {location: "right"},
                 commands: [{
                         id: "create",
                         showText: false,
-                        align: "center"
+                        location: "center"
                     }, {
                         id: "edit",
                         showText: false,
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "delete",
-                        menu: true
+                        location: "menu"
                     }, {
                         id: "save",
                         showIcon: false,
-                        align: "left"
+                        location: "left"
                     }]
             },
             "tizen-header-toolbar": {
                 defaults: {
                     showIcon: true,
                     showText: false,
-                    align: "right"
+                    location: "right"
                 },
                 commands: ["create", "edit", "save", {
                         id: "delete",
                         showText: true,
-                        menu: true
+                        location: "menu"
                     }]
             },
             "tizen-footer-toolbar": {
-                defaults: {align: "right"},
+                defaults: {location: "right"},
                 commands: [{
                         id: "create",
                         showText: false
                     }, {
                         id: "edit",
                         showText: false,
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "delete",
-                        menu: true
+                        location: "menu"
                     }, {
                         id: "save",
                         showIcon: false,
-                        align: "left"
+                        location: "left"
+                    }]
+            },
+            "tizen-simple-toolbar": {
+                defaults: {
+                    showIcon: true,
+                    showText: false,
+                    location: "right"
+                },
+                commands: [{
+                        id: "back",
+                        showIcon: false,
+                        location: "left"
+                    }, {id: "create"}, {
+                        id: "save",
+                        showText: true,
+                        location: "left"
+                    }, {
+                        id: "edit",
+                        showText: true,
+                        location: "menu"
+                    }, {
+                        id: "cancel",
+                        showText: true,
+                        location: "menu"
+                    }, {
+                        id: "delete",
+                        showText: true,
+                        location: "menu"
                     }]
             },
             "generic-header-toolbar": {
                 defaults: {
                     showIcon: false,
                     showText: true,
-                    align: "right"
+                    location: "right"
                 },
                 commands: ["edit", "save", {
                         id: "back",
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "cancel",
-                        align: "left"
+                        location: "left"
                     }, {
                         id: "create",
                         showIcon: true,
@@ -18401,28 +18828,31 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     }]
             },
             "win8-appbar": {
-                defaults: {align: "right"},
+                defaults: {location: "right"},
                 commands: ["edit", "cancel", "save", "delete", {
                         id: "create",
-                        align: "left"
+                        location: "left"
                     }]
             },
             "win8-toolbar": {
                 defaults: {
                     showText: false,
-                    align: "left"
+                    location: "left"
                 },
                 commands: [{id: "previousPage"}]
             },
             "win8-phone-appbar": {
-                defaults: {align: "center"},
-                commands: ["create", "edit", "save", "delete"]
+                defaults: {location: "center"},
+                commands: ["create", "edit", "cancel", "save", {
+                        id: "delete",
+                        location: "menu"
+                    }]
             },
             "desktop-toolbar": {
                 defaults: {
                     showIcon: false,
                     showText: true,
-                    align: "right"
+                    location: "right"
                 },
                 commands: ["cancel", "create", "edit", "save", {
                         id: "delete",
@@ -18452,11 +18882,8 @@ if (!DevExpress.MOD_FRAMEWORK) {
             clear: function() {
                 this._cache = {}
             },
-            hasView: function(viewInfo) {
-                for (var key in this._cache)
-                    if (this._cache[key] === viewInfo)
-                        return true;
-                return false
+            hasView: function(key) {
+                return key in this._cache
             }
         });
         DX.framework.NullViewCache = Class.inherit({
@@ -18786,6 +19213,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 options = $.extend({target: NAVIGATION_TARGETS.blank}, options || {});
                 if (uri === undefined)
                     uri = self._navigationDevice.getUri();
+                while (DX.backButtonCallback.fire());
                 if (/^_back$/.test(uri)) {
                     self.back();
                     return
@@ -18914,7 +19342,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 return this.currentStack.items.length ? this.currentStack.items[0].uri : this.currentUri
             },
             canBack: function() {
-                return this.currentStack.canBack()
+                return this.currentStack.canBack() || DX.backButtonCallback.hasCallback()
             },
             getItemByIndex: function(index) {
                 return this.currentStack.items[index]
@@ -19039,7 +19467,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 this.navigating = $.Callbacks();
                 this._isNavigating = false;
                 DX.registerActionExecutor(DX.framework.createActionExecutors(this));
-                DX.overlayTargetContainer(".dx-viewport .dx-layout");
+                DX.overlayTargetContainer(".dx-viewport");
                 this.components.push(this.router);
                 this.components.push(this.navigationManager)
             },
@@ -19156,11 +19584,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 if (viewInfo)
                     this._onViewRemoved(viewInfo)
             },
-            _onViewReleased: function(viewInfo) {
+            _onViewHidden: function(viewInfo) {
                 var args = {viewInfo: viewInfo};
-                this._processEvent("viewHidden", args, args.viewInfo.model);
-                if (!this._viewCache.hasView(viewInfo))
-                    this._onViewRemoved(viewInfo)
+                this._processEvent("viewHidden", args, args.viewInfo.model)
             },
             _disposeView: function(viewInfo) {
                 if (!viewInfo.model)
@@ -19173,7 +19599,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
             _acquireViewInfo: function(navigationItem) {
                 var viewInfo = this._viewCache.getView(navigationItem.key);
                 if (!viewInfo) {
-                    viewInfo = this._createViewInfo(navigationItem.uri);
+                    viewInfo = this._createViewInfo(navigationItem);
                     this._viewCache.setView(navigationItem.key, viewInfo)
                 }
                 return viewInfo
@@ -19186,12 +19612,14 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 if (modelMethod)
                     modelMethod.call(model, args)
             },
-            _createViewInfo: function(uri) {
-                var routeData = this.router.parse(uri);
+            _createViewInfo: function(navigationItem) {
+                var uri = navigationItem.uri,
+                    routeData = this.router.parse(uri);
                 var viewInfo = {
                         viewName: routeData.view,
                         routeData: routeData,
                         uri: uri,
+                        key: navigationItem.key,
                         canBack: this.canBack()
                     };
                 return viewInfo
@@ -19331,15 +19759,15 @@ if (!DevExpress.MOD_FRAMEWORK) {
             };
         adapters.dxToolbar = {addCommand: function($container, command, containerOptions) {
                 var toolbar = $container.data("dxToolbar"),
-                    initialItemData = {command: command},
-                    isMenu = containerOptions.menu || containerOptions.id === "menu";
+                    initialItemData = {command: command};
                 toolbar.option("itemClickAction", function(e) {
                     if (e.itemData.command)
                         e.itemData.command.execute()
                 });
                 function customizeOption(itemOptions) {
-                    itemOptions.isMenu = isMenu;
-                    if (isMenu)
+                    var location = resolvePropertyValue(command, containerOptions, "location");
+                    itemOptions.location = location;
+                    if (location === "menu")
                         itemOptions.text = resolveTextValue(command, containerOptions);
                     else {
                         var options = {
@@ -19350,7 +19778,6 @@ if (!DevExpress.MOD_FRAMEWORK) {
                                 type: resolveTypeValue(command, containerOptions)
                             };
                         itemOptions.options = options;
-                        itemOptions.align = containerOptions.align || undefined;
                         initialItemData.widget = "button"
                     }
                 }
@@ -19536,6 +19963,8 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     commandIds = [];
                 $.each(commands, function(i, command) {
                     var id = command.option("id");
+                    if (id === null)
+                        throw new Error("The command markup: '" + command._element().get(0).outerHTML + "'. The command's 'id' option should be specified.");
                     commandIds.push(id);
                     commandHash[id] = command
                 });
@@ -19606,26 +20035,17 @@ if (!DevExpress.MOD_FRAMEWORK) {
             init: function(options) {
                 options = options || {};
                 this._$viewPort = options.$viewPort || $("body");
-                this._$hiddenBag = options.$hiddenBag || $(document.getElementById(HIDDEN_BAG_ID));
+                this._$hiddenBag = options.$hiddenBag || $(document.getElementById(HIDDEN_BAG_ID)) || $("<div/>").hide().appendTo("body");
                 this.viewReleased = $.Callbacks();
                 this.viewRendered = $.Callbacks();
-                this._navigationManager = options.navigationManager;
-                this._commandManager = options.commandManager || new DX.framework.html.CommandManager({commandMapping: options.commandMapping || options.app.commandMapping});
-                this._viewEngine = options.viewEngine || options.app.viewEngine;
-                this._prepareTemplates(options.app.viewEngine, options.navigation || options.app.navigation)
+                this._commandManager = options.commandManager || new DX.framework.html.CommandManager({commandMapping: options.commandMapping});
+                this._viewEngine = options.viewEngine;
+                this._prepareTemplates(options.navigation || [])
             },
             activate: function() {
                 this._justActivated = true;
                 this._visibleViews = {};
                 this._getRootElement().appendTo(this._$viewPort).show()
-            },
-            _hidePreviousView: function(currentViewInfo) {
-                var self = this;
-                $.each(this._visibleViews, function(index, viewInfo) {
-                    var previousViewInfo = self._getPreviousViewInfo(currentViewInfo || viewInfo);
-                    if (previousViewInfo)
-                        self._hideView(previousViewInfo)
-                })
             },
             deactivate: function() {
                 var self = this;
@@ -19635,9 +20055,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 this._moveToHiddenBag(this._getRootElement())
             },
             _getPreviousViewInfo: function(viewInfo) {
-                return this._visibleViews[viewInfo.routeData.placeholder || "default"]
+                return this._visibleViews[this._getTargetFrame(viewInfo)]
             },
-            _prepareTemplates: function(viewEngine, navigationCommands) {
+            _prepareTemplates: function(navigationCommands) {
                 var self = this;
                 var $layoutTemplate = self._viewEngine.findLayoutTemplate(this._getLayoutTemplateName()).removeClass("dx-hidden");
                 self._$layoutTemplate = $layoutTemplate;
@@ -19662,7 +20082,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 var $blankView = $layoutTemplate.clone().addClass("blank-view").appendTo(self._$hiddenBag);
                 self._viewEngine._createComponents($blankView);
                 var model = {title: ko.observable()};
-                self._viewEngine._applyTemplate($blankView, model);
+                this._getTransitionElements($blankView).each(function(i, item) {
+                    self._viewEngine._applyTemplate($(item), model)
+                });
                 var result = {
                         model: model,
                         renderResult: {$markup: $blankView},
@@ -19689,14 +20111,14 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 $transitionElements.children().remove()
             },
             _getTransitionElements: function($markup) {
-                return $markup.find(TRANSITION_SELECTOR)
+                return $markup.find(TRANSITION_SELECTOR).addBack(TRANSITION_SELECTOR)
             },
             setViewLoadingState: function(viewInfo, direction) {
                 var self = this;
                 if (self._disableViewLoadingState)
                     return $.Deferred().resolve().promise();
                 var blankViewInfo = $.extend({}, viewInfo, self._blankViewInfo);
-                self._blankViewInfo.model.title(viewInfo.viewTemplateInfo.title || "Loading...");
+                self._blankViewInfo.model.title((viewInfo.viewTemplateInfo || {}).title || "Loading...");
                 return self._showViewImpl(blankViewInfo, direction)
             },
             showView: function(viewInfo, direction) {
@@ -19708,6 +20130,13 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 return this._showViewImpl(viewInfo, direction).done(function() {
                         self._onViewShown(viewInfo)
                     })
+            },
+            disposeView: function(viewInfo) {
+                if (viewInfo.renderResult) {
+                    viewInfo.renderResult.$markup.remove();
+                    viewInfo.renderResult.$transitionContentElements.remove();
+                    delete viewInfo.renderResult
+                }
             },
             _prepareViewTemplate: function($viewTemplate, viewInfo) {
                 this._viewEngine._createComponents($viewTemplate)
@@ -19731,7 +20160,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
             },
             _applyViewCommands: function($markup, viewInfo) {
                 var viewCommands = this._commandManager._findCommands($markup);
-                viewInfo.commands = DX.framework.utils.mergeCommands(viewInfo.commands, viewCommands);
+                viewInfo.commands = DX.framework.utils.mergeCommands(viewInfo.commands || [], viewCommands);
                 this._renderCommands($markup, viewInfo.commands)
             },
             _findCommandContainers: function($markup) {
@@ -19755,17 +20184,23 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     $viewFrame = self._getViewFrame(viewInfo),
                     $markup = viewInfo.renderResult.$markup,
                     $transitionContentElements = $();
+                $.each($markup.find(".dx-content-placeholder"), function(index, el) {
+                    var placeholder = $(el).dxContentPlaceholder("instance");
+                    placeholder.prepareTransition()
+                });
                 $.each(self._getTransitionElements($viewFrame), function(index, transitionElement) {
                     var $transition = $(transitionElement),
                         $viewElement = $markup.find(transitionSelector($transition.data("dx-transition-name"))).children();
-                    self._showViewElements($viewElement);
+                    self._hideViewElements($viewElement);
                     $transition.append($viewElement);
                     $transitionContentElements = $transitionContentElements.add($viewElement)
                 });
                 viewInfo.renderResult.$transitionContentElements = $transitionContentElements
             },
             _onRenderComplete: function(){},
-            _onViewShown: function(viewInfo){},
+            _onViewShown: function(viewInfo) {
+                $(document).trigger("dx.viewchanged")
+            },
             _doTransition: function(viewInfo, direction) {
                 var self = this,
                     deferred = $.Deferred();
@@ -19788,13 +20223,6 @@ if (!DevExpress.MOD_FRAMEWORK) {
             _hideView: function(viewInfo) {
                 this._hideViewElements(viewInfo.renderResult.$transitionContentElements)
             },
-            _notifyViewRendered: function(viewInfo) {
-                var self = this;
-                this._$viewPort.trigger("dx-restore-view");
-                this._$viewPort.one("dx-restore-view", function() {
-                    self._hideView(viewInfo)
-                })
-            },
             _showViewImpl: function(viewInfo, direction) {
                 var self = this,
                     deferred = $.Deferred();
@@ -19802,19 +20230,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     this._justActivated = false;
                     direction = "none"
                 }
-                var previousViewInfo = self._getPreviousViewInfo(viewInfo) || {};
-                var previousLayoutController = previousViewInfo.layoutController;
-                if (viewInfo.layoutController === previousLayoutController || !previousLayoutController)
-                    self._doTransition(viewInfo, direction).done(function() {
-                        deferred.resolve()
-                    });
-                else
-                    deferred.resolve();
-                deferred.done(function() {
-                    self._hidePreviousView(viewInfo);
-                    self._changeView(viewInfo)
-                });
-                return deferred.promise()
+                return self._doTransition(viewInfo, direction).done(function() {
+                        self._changeView(viewInfo)
+                    })
             },
             _releaseView: function(viewInfo) {
                 this.viewReleased.fireWith(this, [viewInfo])
@@ -19826,8 +20244,17 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 return this._$hiddenBag
             },
             _changeView: function(viewInfo) {
-                var $markup = viewInfo.renderResult.$markup;
-                this._visibleViews[viewInfo.routeData.placeholder || "default"] = viewInfo
+                var self = this;
+                var previousViewInfo = self._getPreviousViewInfo(viewInfo);
+                if (previousViewInfo && previousViewInfo !== viewInfo) {
+                    self._hideView(previousViewInfo);
+                    if (!previousViewInfo.isBlankView)
+                        this._releaseView(previousViewInfo)
+                }
+                this._visibleViews[this._getTargetFrame(viewInfo)] = viewInfo
+            },
+            _getTargetFrame: function(viewInfo) {
+                return "content"
             },
             _hideViewElements: function($elements) {
                 this._patchIDs($elements);
@@ -19840,11 +20267,12 @@ if (!DevExpress.MOD_FRAMEWORK) {
             _executeTransitions: function(transitions) {
                 var self = this;
                 var animatedTransitions = $.map(transitions, function(transitionOptions) {
+                        self._showViewElements(transitionOptions.source);
                         if (transitionOptions.source.children().length)
                             return DX.framework.html.TransitionExecutor.create(transitionOptions.destination, transitionOptions)
                     });
                 var animatedDeferreds = $.map(animatedTransitions, function(transition) {
-                        self._showViewElements(transition.options.source.addClass("dx-transition-source"));
+                        transition.options.source.addClass("dx-transition-source");
                         return transition.exec()
                     });
                 var result = $.when.apply($, animatedDeferreds).done(function() {
@@ -19889,8 +20317,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 $items.appendTo(this._getHiddenBagElement())
             }
         });
-        DX.framework.html.layoutControllers.push({controller: new DX.framework.html.DefaultLayoutController});
-        DX.framework.html.OneFrameLayoutController = DX.framework.html.DefaultLayoutController.inherit({})
+        DX.framework.html.layoutControllers.push({controller: new DX.framework.html.DefaultLayoutController})
     })(jQuery, DevExpress);
     /*! Module framework, file framework.templateEngine.js */
     (function($, DX, undefined) {
@@ -19901,25 +20328,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
     })(jQuery, DevExpress);
     /*! Module framework, file framework.viewEngine.js */
     (function($, DX, undefined) {
-        var isEqual = function(a, b) {
-                for (var p in a)
-                    switch (typeof a[p]) {
-                        case'object':
-                            if (!isEqual(a[p], b[p]))
-                                return false;
-                            break;
-                        default:
-                            if (a[p] != b[p])
-                                return false
-                    }
-                for (var p in b)
-                    if (!a || typeof a[p] == 'undefined')
-                        return false;
-                return true
-            };
-        var Class = DX.Class;
-        var ui = DX.ui;
-        var _VIEW_ROLE = "dxView",
+        var Class = DX.Class,
+            ui = DX.ui,
+            _VIEW_ROLE = "dxView",
             _LAYOUT_ROLE = "dxLayout";
         DX.framework[_VIEW_ROLE] = ui.Component.inherit({
             _defaultOptions: function() {
@@ -19937,10 +20348,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
         ui.registerComponent(_VIEW_ROLE, DX.framework.dxView);
         DX.framework[_LAYOUT_ROLE] = ui.Component.inherit({
             _defaultOptions: function() {
-                return $.extend(this.callBase(), {
-                        name: null,
-                        controller: "default"
-                    })
+                return $.extend(this.callBase(), {name: null})
             },
             _render: function() {
                 this.callBase();
@@ -19996,8 +20404,16 @@ if (!DevExpress.MOD_FRAMEWORK) {
             },
             _render: function() {
                 this.callBase();
-                this._element().addClass("dx-content-placeholder").addClass("dx-content-placeholder-" + this.option("name"));
-                setupTransitionElement(this._element(), this.option("transition"), this.option("name"), this.option("contentCssPosition"))
+                var $element = this._element();
+                $element.addClass("dx-content-placeholder").addClass("dx-content-placeholder-" + this.option("name"));
+                setupTransitionElement($element, this.option("transition"), this.option("name"), this.option("contentCssPosition"))
+            },
+            prepareTransition: function() {
+                var $element = this._element();
+                if ($element.children(".dx-content").length === 0) {
+                    $element.wrapInner("<div>");
+                    $element.children().dxContent({targetPlaceholder: this.option("name")})
+                }
             }
         });
         ui.registerComponent("dxContentPlaceholder", DX.framework.dxContentPlaceholder);
@@ -20041,29 +20457,23 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 var self = this;
                 this._initDefaultLayout();
                 return this._loadTemplates().done(function() {
-                        $.each(self._templateMap, function(name, templates) {
-                            $.each(templates, function(role, template) {
-                                self._applyPartialViews(template._element())
-                            })
+                        self._enumerateTemplates(function(template) {
+                            self._applyPartialViews(template._element())
                         })
                     })
             },
-            _fitsCurrentDevice: function(component) {
-                var self = this,
-                    options = component.option(),
-                    device = self.device,
-                    result = true;
-                $.each(options, function(paramName) {
-                    var value = options[paramName];
-                    if (value !== device[paramName] && device[paramName] !== undefined) {
-                        result = false;
-                        return false
-                    }
-                });
-                return result
+            _enumerateTemplates: function(processFn) {
+                var self = this;
+                $.each(self._templateMap, function(name, templatesByRoleMap) {
+                    $.each(templatesByRoleMap, function(role, templates) {
+                        $.each(templates, function(index, template) {
+                            processFn(template)
+                        })
+                    })
+                })
             },
             _findComponent: function(name, role) {
-                return (this._templateMap[name] || {})[role]
+                return ((this._templateMap[name] || {})[role] || [])[0]
             },
             _findTemplate: function(name, role) {
                 var self = this,
@@ -20111,16 +20521,17 @@ if (!DevExpress.MOD_FRAMEWORK) {
             },
             _loadTemplatesFromMarkup: function($markup) {
                 if ($markup.find("[data-dx-role]").length)
-                    throw Error(Globalize.localize("View templates should be updated according to the 13.1 changes. Go to http://dxpr.es/15ikrJA for more details"));
+                    throw Error("View templates should be updated according to the 13.1 changes. Go to http://dxpr.es/15ikrJA for more details");
                 var self = this;
+                $markup.appendTo(this.$root);
                 DX.localization.localizeNode($markup);
                 var components = self._createComponents($markup, [_VIEW_ROLE, _LAYOUT_ROLE]);
                 $.each(components, function(index, component) {
-                    component._element().addClass("dx-hidden");
-                    if (self._fitsCurrentDevice(component))
-                        self._registerTemplateComponent(component)
-                });
-                $markup.appendTo(this.$root)
+                    var $element = component._element();
+                    $element.addClass("dx-hidden");
+                    self._registerTemplateComponent(component);
+                    component._element().detach()
+                })
             },
             _registerTemplateComponent: function(component) {
                 var self = this,
@@ -20128,16 +20539,13 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     role = component.NAME,
                     options = component.option(),
                     templateName = options.name,
-                    components = self._templateMap[templateName] || {};
-                $.each(components, function(role, itemComponent) {
-                    if (component && isEqual(options, itemComponent.option()))
-                        throw new Error(DX.utils.stringFormat("Several markup templates with the same parameters are found.\r\nDetails: {0}", $element.attr("data-options")));
-                });
-                components[role] = component;
-                self._templateMap[templateName] = components
+                    componentsByRoleMap = self._templateMap[templateName] || {};
+                componentsByRoleMap[role] = componentsByRoleMap[role] || [];
+                componentsByRoleMap[role].push(component);
+                self._templateMap[templateName] = componentsByRoleMap
             },
             getViewTemplateInfo: function(viewName) {
-                return this._templateMap[viewName][_VIEW_ROLE].option()
+                return this._templateMap[viewName][_VIEW_ROLE][0].option()
             },
             _applyPartialViews: function($render) {
                 var self = this;
@@ -20148,7 +20556,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     var $view = self._findTemplate(viewName, _VIEW_ROLE);
                     self._applyPartialViews($view);
                     $partialPlaceholder.append($view);
-                    $view.show()
+                    $view.removeClass("dx-hidden")
                 })
             },
             _ajaxImpl: function() {
@@ -20174,7 +20582,37 @@ if (!DevExpress.MOD_FRAMEWORK) {
                         });
                     tasks.push(task)
                 });
-                return $.when.apply($, tasks)
+                return $.when.apply($, tasks).done(function() {
+                        $.each(self._templateMap, function(name, templatesByRoleMap) {
+                            $.each(templatesByRoleMap, function(role, templates) {
+                                self._filterTemplatesByDevice(templates)
+                            })
+                        })
+                    })
+            },
+            _filterTemplatesByDevice: function(components) {
+                var bestMatches = DX.utils.findBestMatches(this.device, components, function(component) {
+                        return component.option()
+                    });
+                if (bestMatches.length > 1) {
+                    var message = "Concurrent templates are found:\r\n";
+                    $.each(bestMatches, function(index, match) {
+                        message += match._element().attr("data-options") + "\r\n"
+                    });
+                    message += "Target device:\r\n";
+                    message += JSON.stringify(this.device);
+                    throw Error(message);
+                }
+                var match = bestMatches[0];
+                $.each(components, function(index, component) {
+                    if (component != match) {
+                        component._dispose();
+                        component._element().remove()
+                    }
+                });
+                components.length = 0;
+                if (match)
+                    components.push(match)
             },
             _extendModelFormViewTemplate: function($viewTemplate, model) {
                 this._extendModelFromViewData($viewTemplate, model)
@@ -20191,18 +20629,18 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 $viewTemplate.children().eq(0).dxContent({targetPlaceholder: 'content'})
             },
             _initDefaultLayout: function() {
-                this._$defaultLayout = $("<div class=\"dx-full-height\" data-options=\"dxLayout : { name: 'default', controller: 'default' } \"> \
+                this._$defaultLayoutTemplate = $("<div class=\"dx-full-height\" data-options=\"dxLayout : { name: 'default' } \"> \
                 <div class=\"dx-full-height\" data-options=\"dxContentPlaceholder : { name: 'content' } \" ></div> \
             </div>")
             },
-            _getDefaultLayout: function() {
-                var $result = this._$defaultLayout.clone();
+            _getDefaultLayoutTemplate: function() {
+                var $result = this._$defaultLayoutTemplate.clone();
                 this._createComponents($result);
                 return $result
             },
             findLayoutTemplate: function(layoutName) {
                 if (!layoutName)
-                    return this._getDefaultLayout();
+                    return this._getDefaultLayoutTemplate();
                 var findLayoutEventArgs = {layoutName: layoutName};
                 this.layoutSelecting.fire(findLayoutEventArgs);
                 return findLayoutEventArgs.layout ? $(findLayoutEventArgs.layout) : this._findTemplate(layoutName, _LAYOUT_ROLE)
@@ -20215,7 +20653,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
             },
             _applyLayoutCore: function($view, $layout) {
                 if ($layout === undefined || $layout.length === 0)
-                    $layout = this._getDefaultLayout();
+                    $layout = this._getDefaultLayoutTemplate();
                 if ($view.children(".dx-content").length === 0)
                     this._wrapViewDefaultContent($view);
                 var $toMerge = $().add($layout).add($view);
@@ -20252,7 +20690,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 this.callBase(options);
                 this._initViewPort(options.viewPort);
                 this.device = options.device || DX.devices.current();
-                this._defaultLayout = options.defaultLayout || "default";
+                this._navigationType = options.navigationType || options.defaultLayout;
                 this._$root = $(options.rootNode || document.body);
                 this._$viewPort = $("." + VIEW_PORT_CLASSNAME);
                 if (!this._$viewPort.length)
@@ -20267,6 +20705,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 this._availableLayoutControllers = [];
                 this.components.push(this.viewEngine);
                 this.viewRendered = $.Callbacks();
+                this.resolveLayoutController = $.Callbacks();
                 this._attachCssClasses();
                 this._$hiddenBag.addClass(this._$viewPort.attr("class").replace(VIEW_PORT_CLASSNAME, ""))
             },
@@ -20284,17 +20723,22 @@ if (!DevExpress.MOD_FRAMEWORK) {
                         layoutController: null
                     };
                 this._processEvent("resolveLayoutController", args, viewInfo.model);
-                var result = args.layoutController || this._resolveLayoutControllerImpl(viewInfo);
-                if (result === undefined)
-                    throw Error("The layout controller not found. Make sure you have a corresponding *.js reference in your main *.html file");
-                return result
+                return args.layoutController || this._resolveLayoutControllerImpl(viewInfo)
             },
             _resolveLayoutControllerImpl: function(viewInfo) {
-                var target = $.extend({
+                var viewTemplateInfo = viewInfo.viewTemplateInfo || {},
+                    target = $.extend({
                         root: !viewInfo.canBack,
-                        name: viewInfo.viewTemplateInfo.layout || this._defaultLayout
+                        navigationType: viewTemplateInfo.navigationType || viewTemplateInfo.layout || this._navigationType
                     }, DX.devices.current());
-                return DX.utils.findBestMatch(target, this._availableLayoutControllers).controller
+                var matches = DX.utils.findBestMatches(target, this._availableLayoutControllers);
+                if (!matches.length)
+                    throw Error("The layout controller cannot be resolved. There are no appropriate layout controllers for the current context. Make sure you have the corresponding *.js references in your main *.html file.");
+                if (matches.length > 1)
+                    throw Error("The layout controller cannot be resolved. Two or more layout controllers suit the current context. Make the layout controllers registration more specific.");
+                if (matches[0].navigationType !== target.navigationType)
+                    throw Error("The layout controller cannot be resolved. There are no appropriate layout controllers for the specified navigation type: '" + target.navigationType + "'. Make sure you have the corresponding *.js references in your main *.html file.");
+                return matches[0].controller
             },
             _activateLayoutController: function(layoutController) {
                 var self = this;
@@ -20314,10 +20758,8 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 return result
             },
             _disposeView: function(viewInfo) {
-                if (viewInfo.renderResult) {
-                    viewInfo.renderResult.$markup.remove();
-                    delete viewInfo.renderResult
-                }
+                if (viewInfo.layoutController.disposeView)
+                    viewInfo.layoutController.disposeView(viewInfo);
                 this.callBase(viewInfo)
             },
             viewPort: function() {
@@ -20342,8 +20784,8 @@ if (!DevExpress.MOD_FRAMEWORK) {
                     };
                 return platformToThemeMap[device.platform]
             },
-            _createViewInfo: function(uri) {
-                var viewInfo = this.callBase(uri);
+            _createViewInfo: function(navigationItem) {
+                var viewInfo = this.callBase(navigationItem);
                 viewInfo.viewTemplateInfo = this.viewEngine.getViewTemplateInfo(viewInfo.viewName) || {};
                 viewInfo.layoutController = this._resolveLayoutController(viewInfo);
                 return viewInfo
@@ -20354,9 +20796,10 @@ if (!DevExpress.MOD_FRAMEWORK) {
             },
             _checklayoutControllersRegistration: function(controllers) {
                 var result = [];
-                for (var oldControllerName in controllers)
-                    if (!controllers[oldControllerName].controller)
-                        result.push(oldControllerName);
+                $.each(controllers, function(oldControllerName, controllerInfo) {
+                    if (!controllerInfo.controller)
+                        result.push(oldControllerName)
+                });
                 if (result.length !== 0)
                     throw new Error("A deprecated way is used for the registration of the following layout controllers: '" + result.join("' ,'") + "'.\r\nFor details, read the http://dxpr.es/1bTjfj1");
             },
@@ -20365,7 +20808,7 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 self._checklayoutControllersRegistration(self._layoutControllers);
                 $.each(self._layoutControllers, function(index, controllerInfo) {
                     var controller = controllerInfo.controller;
-                    if (DX.utils.findBestMatch(DX.devices.current(), [controllerInfo])) {
+                    if (DX.utils.findBestMatches(DX.devices.current(), [controllerInfo]).length) {
                         self._availableLayoutControllers.push(controllerInfo);
                         if (controller.init)
                             controller.init({
@@ -20373,7 +20816,9 @@ if (!DevExpress.MOD_FRAMEWORK) {
                                 $viewPort: self._$viewPort,
                                 $hiddenBag: self._$hiddenBag,
                                 navigationManager: self.navigationManager,
-                                commandManager: self.commandManager
+                                commandMapping: self.commandMapping,
+                                viewEngine: self.viewEngine,
+                                navigation: self.navigation
                             });
                         if (controller.viewReleased)
                             controller.viewReleased.add(function(viewInfo) {
@@ -20385,6 +20830,11 @@ if (!DevExpress.MOD_FRAMEWORK) {
                             })
                     }
                 })
+            },
+            _onViewReleased: function(viewInfo) {
+                this._onViewHidden(viewInfo);
+                if (!this._viewCache.hasView(viewInfo.key))
+                    this._onViewRemoved(viewInfo)
             },
             _attachCssClasses: function() {
                 DX.devices.attachCss(this._$viewPort);
@@ -20490,6 +20940,55 @@ if (!DevExpress.MOD_FRAMEWORK) {
                         });
                     return $.when(promiseDestination, promiseSource)
                 }});
+        var SlideIOS7TransitionExecutor = TransitionExecutor.inherit({_animate: function(options) {
+                    if (options.direction === "none") {
+                        alert("none");
+                        return $.Deferred().resolve().promise()
+                    }
+                    var $source = options.source,
+                        $destination = options.destination;
+                    var containerWidth = this.container.width(),
+                        slowTransitionWidth = containerWidth / 5,
+                        sourceLeftFrom,
+                        sourceLeftTo,
+                        destinationLeftFrom,
+                        destinationLeftTo,
+                        destinationLeft = $destination.position().left,
+                        sourceZIndex = $source.css("z-index"),
+                        destinationZIndex = $destination.css("z-index");
+                    if (options.direction === "backward") {
+                        sourceLeftFrom = -slowTransitionWidth;
+                        sourceLeftTo = 0;
+                        destinationLeftFrom = 0;
+                        destinationLeftTo = containerWidth;
+                        $source.css("z-index", 1);
+                        $destination.css("z-index", 2)
+                    }
+                    else {
+                        sourceLeftFrom = containerWidth;
+                        sourceLeftTo = 0;
+                        destinationLeftFrom = 0;
+                        destinationLeftTo = -slowTransitionWidth;
+                        $source.css("z-index", 2);
+                        $destination.css("z-index", 1)
+                    }
+                    var promiseSource = DX.fx.animate($source, {
+                            type: "slide",
+                            from: {left: sourceLeftFrom},
+                            to: {left: sourceLeftTo},
+                            duration: TRANSITION_DURATION
+                        });
+                    var promiseDestination = DX.fx.animate($destination, {
+                            type: "slide",
+                            from: {left: destinationLeftFrom},
+                            to: {left: destinationLeftTo},
+                            duration: TRANSITION_DURATION
+                        });
+                    return $.when(promiseDestination, promiseSource).done(function() {
+                            $source.css("z-index", sourceZIndex);
+                            $destination.css("z-index", destinationZIndex)
+                        })
+                }});
         var OverflowTransitionExecutor = TransitionExecutor.inherit({_animate: function(options) {
                     var $source = options.source,
                         $destination = options.destination,
@@ -20541,11 +21040,15 @@ if (!DevExpress.MOD_FRAMEWORK) {
                 }});
         TransitionExecutor.create = function(container, options) {
             var transitionType = options.direction === "none" ? "none" : options.type;
+            var device = DX.devices.current();
             switch (transitionType) {
                 case"none":
                     return new NoneTransitionExecutor(container, options);
                 case"slide":
-                    return new SlideTransitionExecutor(container, options);
+                    if (device.platform === "ios" && device.version[0] === 7)
+                        return new SlideIOS7TransitionExecutor(container, options);
+                    else
+                        return new SlideTransitionExecutor(container, options);
                 case"fade":
                     return new FadeTransitionExecutor(container, options);
                 case"overflow":

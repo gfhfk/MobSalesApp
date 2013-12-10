@@ -1,7 +1,7 @@
 /*! 
 * DevExpress PhoneJS
-* Version: 13.2.3
-* Build date: Nov 18, 2013
+* Version: 13.2.5
+* Build date: Dec 3, 2013
 *
 * Copyright (c) 2012 - 2013 Developer Express Inc. ALL RIGHTS RESERVED
 * EULA: http://phonejs.devexpress.com/EULA
@@ -86,9 +86,9 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 }
 .dx-transition-absolute .dx-inactive-view
 {
-  left: -9999px;
+  left: -9999px !important;
   height: 100%;
-  position: absolute;
+  position: absolute !important;
 }
 .dx-transition-absolute .dx-active-view
 {
@@ -98,7 +98,7 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 }
 .dx-hidden, .dx-transition-static .dx-inactive-view
 {
-  display: none;
+  display: none !important;
 }
 .dx-clearfix:before, .dx-clearfix:after
 {
@@ -293,11 +293,9 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 {
   -webkit-transform: translateZ(0);
 }
-.dx-scrollable.dx-scrollable-native.dx-scrollable-scrollbars-hidden
+.dx-scrollable.dx-scrollable-native.dx-scrollable-scrollbars-hidden ::-webkit-scrollbar
 {
-  -ms-overflow-style: none;
-  -ms-touch-action: none;
-  overflow: hidden;
+  display: none;
 }
 .dx-scrollable.dx-scrollable-native.dx-scrollable-native-ios .dx-scrollable-content
 {
@@ -310,9 +308,12 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 }
 .dx-scrollable.dx-scrollable-native.dx-scrollable-native-generic .dx-scrollable-content
 {
-  min-height: 0;
   height: auto;
   -webkit-transform: translateZ(0);
+}
+.dx-scrollable.dx-scrollable-native.dx-scrollable-native-android
+{
+  overflow: hidden;
 }
 .dx-scrollable-container
 {
@@ -545,6 +546,7 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical.dx-scrollable-disabled .dx-scrollable-container
 {
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical.dx-scrollable-disabled .dx-scrollable-container .dx-scrollable-content
 {
@@ -554,42 +556,52 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 {
   overflow-y: hidden;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container
-{
-  transition: padding ease 400ms;
-}
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container .dx-scrollable-content
 {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   -ms-overflow-style: none;
   -ms-scroll-snap-type: mandatory;
   -ms-scroll-snap-points-y: snapList(0%,80px,100%);
   -ms-scroll-chaining: none;
+  -ms-touch-action: pan-y;
+}
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container .dx-scrollable-content:after
+{
+  display: block;
+  content: " ";
+  height: 30px;
+}
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container .dx-scrollable-content .dx-scrollview-top-pocket
+{
+  min-height: 30px;
 }
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container .dx-scrollview-content
 {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   -ms-overflow-style: -ms-autohiding-scrollbar;
+  -ms-touch-action: pan-y;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-locked, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading
 {
   -ms-touch-action: none;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollable-content
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-locked .dx-scrollable-content, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollable-content, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading .dx-scrollable-content
 {
   -ms-touch-action: none;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-content
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-locked .dx-scrollview-content, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-content, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading .dx-scrollview-content
 {
   -ms-touch-action: none;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-pull-down-indicator
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-pull-down-indicator, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading .dx-scrollview-pull-down-indicator
 {
   opacity: 1;
 }
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-pull-down-image
+.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-refreshing .dx-scrollview-pull-down-image, .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading .dx-scrollview-pull-down-image
 {
   opacity: 0;
 }
@@ -603,19 +615,8 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 }
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container .dx-scrollview-bottom-pocket
 {
-  position: absolute;
-  top: 0;
   width: 100%;
   text-align: center;
-  opacity: 0;
-}
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading
-{
-  padding-top: 20px;
-}
-.dx-scrollview.dx-scrollable-native.dx-scrollable-native-win8.dx-scrollable-vertical .dx-scrollable-container.dx-scrollview-pull-down-loading .dx-scrollview-bottom-pocket
-{
-  opacity: 1;
 }
 .dx-scrollview.dx-scrollable-native.dx-scrollable-native-generic .dx-scrollview-top-pocket
 {
@@ -1200,6 +1201,11 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 .dx-list .dx-list-item-content
 {
   width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
+  -ms-text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .dx-list .dx-list-item-left-bag .dx-toggle-delete-switch
 {
@@ -1226,8 +1232,21 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 .dx-list .dx-switchable-delete-button-container
 {
   position: absolute;
-  top: 50%;
+  top: 0;
   right: 0;
+  bottom: 0;
+}
+.dx-list .dx-switchable-delete-button-wrapper
+{
+  display: table;
+  height: 100%;
+}
+.dx-list .dx-switchable-delete-button-inner-wrapper
+{
+  display: table-cell;
+  vertical-align: middle;
+  height: 100%;
+  padding-left: 1px;
 }
 .dx-list .dx-switchable-delete-button
 {
@@ -1619,11 +1638,13 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 }
 .dx-loadindicator
 {
-  display: inline-block;
   position: relative;
   width: 32px;
   height: 32px;
+  display: inline-block;
   overflow: hidden;
+  border: none;
+  background: transparent;
 }
 .dx-loadindicator.dx-loadindicator-small
 {
@@ -1639,6 +1660,29 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
 {
   width: 64px;
   height: 64px;
+}
+.dx-loadindicator-container>.dx-loadindicator
+{
+  top: 50%;
+  left: 50%;
+  position: absolute;
+  margin-top: -16px;
+  margin-left: -16px;
+}
+.dx-loadindicator-container>.dx-loadindicator.dx-loadindicator-small
+{
+  margin-top: -10px;
+  margin-left: -10px;
+}
+.dx-loadindicator-container>.dx-loadindicator.dx-loadindicator-medium
+{
+  margin-top: -16px;
+  margin-left: -16px;
+}
+.dx-loadindicator-container>.dx-loadindicator.dx-loadindicator-large
+{
+  margin-top: -32px;
+  margin-left: -32px;
 }
 .dx-loadpanel-content
 {
@@ -1703,13 +1747,21 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
   top: 0;
   left: 0;
 }
+.dx-radio-group label
+{
+  display: table;
+  cursor: pointer;
+}
 .dx-radio-group label .dx-radio-button-input
 {
   display: none;
 }
-.dx-radio-group label span
+.dx-radio-group label .dx-radio-value-container
 {
+  display: table-cell;
   vertical-align: middle;
+  padding-right: 10px;
+  padding-left: 5px;
 }
 .dx-radio-group.dx-radio-group-horizontal .dx-radio-button
 {
@@ -1782,6 +1834,10 @@ article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, 
   box-sizing: border-box;
   position: absolute;
   width: 88%;
+  height: 100%;
+}
+.dx-slideout
+{
   height: 100%;
 }
 .dx-slideout .dx-slideout-menu

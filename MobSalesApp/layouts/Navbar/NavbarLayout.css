@@ -7,11 +7,6 @@
     position: relative;
 }
 
-.navbar-layout .load-panel.dx-loadpanel-content {
-    background: transparent;
-    border: none;
-}
-
 .navbar-layout .layout-header {
     position: absolute;
     width: 100%;
@@ -24,8 +19,6 @@
 }
 
 .navbar-layout .layout-content > div,
-.navbar-layout-phone .layout-content,
-.navbar-layout-phone .layout-content > div,
 .navbar-layout .transition-frame {
     -position: absolute;
     height: 100%;
@@ -62,26 +55,26 @@
     bottom: 0;
 }
 
-.dx-theme-ios.dx-version-major-5 .navbar-layout .view-footer,
-.dx-theme-ios.dx-version-major-6 .navbar-layout .view-footer {
-    position: static;
-}
-
 .dx-theme-ios.dx-version-major-5 .navbar-layout .view-toolbar-bottom.dx-toolbar,
 .dx-theme-ios.dx-version-major-6 .navbar-layout .view-toolbar-bottom.dx-toolbar {
     background: transparent;
     border: none;
     margin-bottom: 10px;
 }
-
-.dx-theme-ios.dx-version-major-5 .navbar-layout .view-toolbar-bottom.dx-toolbar .dx-toolbar-center,
-.dx-theme-ios.dx-version-major-6 .navbar-layout .view-toolbar-bottom.dx-toolbar .dx-toolbar-center {
-    width: 100%;
+ 
+.dx-theme-ios.dx-version-major-5 .navbar-layout .view-footer,
+.dx-theme-ios.dx-version-major-6 .navbar-layout .view-footer {
+    position: static;
 }
 
 .dx-theme-ios.dx-version-major-5 .navbar-layout .view-footer .dx-toolbar,
 .dx-theme-ios.dx-version-major-6 .navbar-layout .view-footer .dx-toolbar {
     height: 57px;
+}
+
+.dx-theme-ios.dx-version-major-5 .navbar-layout .view-toolbar-bottom.dx-toolbar .dx-toolbar-center,
+.dx-theme-ios.dx-version-major-6 .navbar-layout .view-toolbar-bottom.dx-toolbar .dx-toolbar-center {
+    width: 100%;
 }
 
 .dx-theme-ios.dx-version-major-5 .navbar-layout .view-footer .dx-button,
@@ -114,6 +107,7 @@
 .dx-theme-ios.dx-version-major-7 .navbar-layout .layout-content {
     top: 44px;
     bottom: 0;
+    background-color: #fff;
 }
 
 .dx-theme-ios.dx-version-major-7 .navbar-layout.has-navbar .layout-content {
@@ -141,6 +135,10 @@
 
 .dx-theme-ios.dx-version-major-7 .navbar-layout .view-footer .dx-toolbar {
     height: 57px;
+}
+
+.dx-theme-ios.dx-version-major-7 .navbar-layout .view-footer .dx-toolbar-center {
+    width: 100%;
 }
 
 .dx-theme-ios.dx-version-major-7 .navbar-layout .view-footer .dx-button {
@@ -237,63 +235,6 @@
     /* end for IE */
 }
 
-/* Windows phone 8 */
-.dx-theme-win8.dx-device-phone {
-    background: #000;
-}
-
-.dx-theme-win8 .navbar-layout-phone {
-    height: 100%;
-    position: relative;
-}
-
-.dx-theme-win8 .navbar-layout-phone .dx-toolbar.layout-toolbar-bottom {
-    position: absolute;
-    bottom: 0;
-    margin-bottom: 0;
-
-    -webkit-transition: all .2s;
-    -moz-transition: all .2s;
-    -o-transition: all .2s;
-    transition: all .2s;
-}
-
-.dx-theme-win8 .dx-toolbar.layout-toolbar-bottom.semi-hidden {
-    margin-bottom: -20px;
-
-    -webkit-transition: all .2s;
-    -moz-transition: all .2s;
-    -o-transition: all .2s;
-    transition: all .2s;
-}
-
-.dx-theme-win8 .navbar-layout-phone .layout-content {
-    overflow: hidden;
-    width: 100%;
-}
-
-.dx-theme-win8 .dx-pivot.has-toolbar-bottom {
-    overflow: hidden;
-    width: 100%;
-    height: auto;
-    top: 0;
-    bottom: 40px;
-    position: absolute;
-}
-
-.dx-theme-win8 .dx-appbar-active {
-    bottom: 0;
-    position: absolute;
-}
-
-.dx-theme-win8 .navbar-layout-phone .dx-toolbar {
-    height: 60px;
-}
-
-.dx-theme-win8 .navbar-layout-phone .layout-header .dx-toolbar {
-    opacity: 1;
-}
-
 /* tizen */
 
 .dx-theme-tizen .navbar-layout .layout-header #navBar {
@@ -337,11 +278,11 @@
 
 .dx-theme-generic .navbar-layout .layout-content {
     top: 0;
-    bottom: 0;
+    bottom: 54px;
 }
 
 .dx-theme-generic .navbar-layout .layout-content.has-toolbar {
-    bottom: 68px;
+    bottom: 76px;
 }
 
 .dx-theme-generic .navbar-layout.has-navbar .layout-content {
@@ -350,7 +291,7 @@
 
 .dx-theme-generic .navbar-layout .layout-footer {
     bottom: 0;
-    height: 68px;
+    height: 54px;
 }
 
 .dx-theme-generic .navbar-layout.has-toolbar .layout-footer {
@@ -361,8 +302,6 @@
     padding: 0;
 }
 
-.navbar-layout-phone .load-panel,
-.navbar-layout .load-panel {
-    top: 50%;
-    left: 50%;
+.dx-theme-generic .navbar-layout .view-footer {
+    position: static;
 }

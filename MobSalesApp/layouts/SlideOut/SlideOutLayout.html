@@ -12,7 +12,7 @@
     </div>
 </script>
 
-<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'ios', controller: 'slideout' } " >
+<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'ios' } " >
     <div class="layout-frame dx-content-background" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header dx-toolbar">
             <div class="layout-toolbar" data-bind="dxToolbar: { items: [ { align: 'left', template: 'nav-button' }, { align: 'center', text: title } ] }" 
@@ -24,17 +24,18 @@
         </div>
 
         <div class="layout-content dx-ios-stripes" data-options="dxContentPlaceholder : { name: 'content' } " >
-            <div class="load-panel" data-bind="dxLoadIndicator: { }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-bind="dxLoadIndicator: { }"></div>
+            </div>
         </div>
     </div>
 
     <div class="view-footer" data-options="dxContent : { targetPlaceholder: 'view-footer' } " >
-        <div class="view-toolbar-bottom" data-options="dxToolbar: { visible: true }, dxCommandContainer : { id: 'ios-view-footer' } " >
-        </div>
-        </div>
+        <div class="view-toolbar-bottom" data-options="dxToolbar: { visible: true }, dxCommandContainer : { id: 'ios-view-footer' } " ></div>
+    </div>
 </div>
 
-<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'android', controller: 'slideout' } " >
+<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'android' } " >
     <div class="layout-frame dx-content-background" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header dx-toolbar">
             <div class="layout-toolbar" data-bind="dxToolbar: { items: [ { align: 'left', template: 'nav-button' }, { align: 'center', text: title } ] }"
@@ -46,12 +47,14 @@
         </div>
 
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' } " >
-            <div class="load-panel" data-bind="dxLoadIndicator: { }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-bind="dxLoadIndicator: {}"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'tizen', controller: 'slideout' } " >
+<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'tizen' } " >
     <div class="layout-frame dx-content-background" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header dx-toolbar">
             <div class="layout-toolbar" data-bind="dxToolbar: { items: [ { align: 'left', template: 'nav-button' }, { align: 'center', text: title } ] }"
@@ -63,12 +66,14 @@
         </div>
 
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' } " >
-            <div class="load-panel" data-bind="dxLoadIndicator: { }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-bind="dxLoadIndicator: {}"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'generic', controller: 'slideout' } " >
+<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'generic' } " >
     <div class="layout-frame dx-content-background" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header dx-toolbar">
             <div class="layout-toolbar" data-bind="dxToolbar: { items: [{ align: 'left', template: 'nav-button' }, { align: 'center', text: title }] }" 
@@ -80,7 +85,9 @@
         </div>
 
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' } " >
-            <div class="load-panel" data-bind="dxLoadIndicator: {}"></div>
+            <div class="dx-loadindicator-container">
+                <div data-bind="dxLoadIndicator: {}"></div>
+            </div>
         </div>
     </div>
 
@@ -90,11 +97,10 @@
         </div>
 </div>
 
-<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'win8', phone: true, controller: 'slideout' } " >
+<div class="slideout-layout dx-black-background" data-options="dxLayout : { name: 'slideout', platform: 'win8', phone: true } " >
     <div class="layout-frame dx-content-background" data-options="dxTransition: { name: 'main', type: 'slide' }">
         <div class="layout-header">
-            <div class="layout-toolbar" data-bind="dxToolbar: { items: [ { align: 'left', template: 'nav-button' }, { align: 'center', text: title } ] }"
-                 data-options="dxCommandContainer : { }">
+            <div class="layout-toolbar" data-bind="dxToolbar: { items: [ { align: 'left', template: 'nav-button' }, { align: 'center', text: title } ] }">
                 <div style="display: none" class="nav-button-item" data-options="dxTemplate : { name: 'nav-button' } ">
                     <div class="nav-button" data-bind="dxButton: { icon: 'menu' }"></div>
                 </div>
@@ -102,10 +108,12 @@
         </div>
 
         <div class="layout-content" data-options="dxContentPlaceholder : { name: 'content' } " >  
-            <div class="load-panel" data-bind="dxLoadIndicator: { }"></div>
+            <div class="dx-loadindicator-container">
+                <div data-bind="dxLoadIndicator: {}"></div>
+            </div>
         </div>
 
-        <div class="layout-toolbar-bottom win8 semi-hidden" data-options="dxToolbar: { dataSource: [], visible: false }, dxCommandContainer : { id: 'win8-phone-appbar' } ">
+        <div class="layout-toolbar-bottom" data-options="dxToolbar: { dataSource: [], visible: false }, dxCommandContainer : { id: 'win8-phone-appbar' } ">
         </div>
     </div>
 

@@ -5,17 +5,6 @@
     position: relative;
 }
 
-.slideout-layout .load-panel {
-    top: 50%;
-    left: 50%;
-    position: absolute;
-}
-
-.slideout-layout .load-panel.dx-loadpanel-content {
-    background: transparent;
-    border: none;
-}
-
 .slideout-layout .layout-header {
     position: absolute;
     width: 100%;
@@ -92,6 +81,11 @@
 
 
 /* iOS */
+.slideout-layout .view-footer {
+    position: static;
+}
+
+/* iOS 6 */
 .dx-theme-ios.dx-version-major-5 .slideout-layout .navigation-list .dx-list,
 .dx-theme-ios.dx-version-major-6 .slideout-layout .navigation-list .dx-list {
     background: none;
@@ -138,10 +132,6 @@
 .dx-theme-ios.dx-version-major-5 .slideout-layout .layout-header,
 .dx-theme-ios.dx-version-major-6 .slideout-layout .layout-header {
     height: 43px;
-}
-
-.dx-theme-ios.dx-version-major-7 .layout-header.dx-toolbar {
-    background: none;
 }
 
 .dx-theme-ios.dx-version-major-5 .slideout-layout .layout-content,
@@ -250,11 +240,17 @@
     left: 10px;
     right: 10px;
 }
+
+.dx-theme-ios.dx-version-major-7 .slideout-layout .layout-header.dx-toolbar {
+    background: none;
+}
+
 .dx-theme-ios.dx-version-major-7 .slideout-layout .layout-header {
     height: 43px;
 }
 .dx-theme-ios.dx-version-major-7 .slideout-layout .layout-content {
     top: 43px;
+    background-color: #fff;
 }
 
 .dx-theme-ios.dx-version-major-7 .slideout-layout .view-footer .dx-toolbar {
@@ -318,23 +314,6 @@
     position: absolute;
     bottom: 0;
     margin-bottom: 0;
-
-    -webkit-transition: all .2s;
-    -moz-transition: all .2s;
-    -o-transition: all .2s;
-    transition: all .2s;
-}
-
-.dx-theme-win8 .slideout-layout .dx-toolbar.layout-toolbar-bottom.semi-hidden {
-    margin-bottom: -20px;
-
-    -webkit-transition: all .2s;
-    -moz-transition: all .2s;
-    -o-transition: all .2s;
-    transition: all .2s;
-}
-
-.dx-theme-win8 .slideout-layout .dx-toolbar {
 }
 
 .dx-theme-win8.dx-device-phone.dx-color-scheme-white .slideout-layout .dx-toolbar {
@@ -369,5 +348,5 @@
 }
 
 .dx-theme-generic .slideout-layout .layout-content {
-    top: 46px;
+    top: 47px;
 }

@@ -1,12 +1,10 @@
 (function($, DX, undefined) {
-    var INITED = "__inited";
-    var HAS_TOOLBAR_BOTTOM_CLASS = "has-toolbar-bottom",
-        SEMI_HIDDEN_CLASS = "semi-hidden",
-        TOOLBAR_BOTTOM_SELECTOR = ".layout-toolbar-bottom.win8";
-    DX.framework.html.SimpleLayoutController = DX.framework.html.OneFrameLayoutController.inherit({
-        _getLayoutTemplateName: function() {
+    DX.framework.html.SimpleLayoutController = DX.framework.html.DefaultLayoutController.inherit({_getLayoutTemplateName: function() {
             return "simple"
-        },
+        }});
+    var HAS_TOOLBAR_BOTTOM_CLASS = "has-toolbar-bottom",
+        TOOLBAR_BOTTOM_SELECTOR = ".layout-toolbar-bottom";
+    DX.framework.html.Win8SimpleLayoutController = DX.framework.html.SimpleLayoutController.inherit({
         _showViewImpl: function(viewInfo) {
             var self = this,
                 result = self.callBase.apply(self, arguments),
@@ -15,7 +13,6 @@
             $appbar.each(function(i, element) {
                 var $element = $(element);
                 appbar = $element.dxToolbar("instance");
-                self._initAppbar($element);
                 if (appbar) {
                     self._refreshAppbarVisibility(appbar, $frame);
                     appbar.optionChanged.add(function(optionName, optionValue) {
@@ -36,37 +33,29 @@
             });
             $content.toggleClass(HAS_TOOLBAR_BOTTOM_CLASS, isAppbarNotEmpty);
             appbar.option("visible", isAppbarNotEmpty)
-        },
-        _initAppbar: function($appbar) {
-            if ($appbar.data(INITED))
-                return;
-            $appbar.data(INITED, true);
-            $appbar.click(function() {
-                if ($appbar.children().get(0) === event.srcElement)
-                    $(this).toggleClass(SEMI_HIDDEN_CLASS)
-            })
-        },
-        _onRenderComplete: function(viewInfo) {
-            var $toolbarBottom = this._getViewFrame().find(".layout-toolbar-bottom");
-            window.setTimeout(function() {
-                $toolbarBottom.addClass("with-transition")
-            })
         }
     });
     DX.framework.html.layoutControllers.push({
-        name: "navbar",
-        root: false,
+        navigationType: "navbar",
         platform: "win8",
-        controller: new DX.framework.html.SimpleLayoutController
-    });
-    DX.framework.html.layoutControllers.push({
-        name: "navbar",
         root: false,
+        phone: true,
+        controller: new DX.framework.html.Win8SimpleLayoutController
+    });
+    DX.framework.html.layoutControllers.push({
+        navigationType: "navbar",
         platform: "android",
+        root: false,
         controller: new DX.framework.html.SimpleLayoutController
     });
     DX.framework.html.layoutControllers.push({
-        name: "simple",
+        navigationType: "simple",
         controller: new DX.framework.html.SimpleLayoutController
+    });
+    DX.framework.html.layoutControllers.push({
+        navigationType: "simple",
+        platform: "win8",
+        phone: true,
+        controller: new DX.framework.html.Win8SimpleLayoutController
     })
 })(jQuery, DevExpress);
