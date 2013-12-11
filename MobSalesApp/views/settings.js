@@ -1,13 +1,15 @@
 ﻿/// <reference path="../Scripts/_references.js" />
 MobileSales.Settings = function (params) {
     var app = MobileSales,
-        needToSynchonize = params.item,
+        needToSynchonize = params.item==="1",
         self = this;
 
     var vm = {
         entityList: ko.observableArray([]),
         loading: ko.observableArray(),
         viewShowing: function () {
+            if (needToSynchonize)
+                getEntities();
         },
         viewShown: function () {
             $(".dx-active-view .dx-scrollable").data("dxScrollView").scrollTo(0);

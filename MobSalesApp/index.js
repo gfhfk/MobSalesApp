@@ -52,8 +52,9 @@ $(function () {
     }
     function startApp(needToSynchronize) {
         if (needToSynchronize)
-            ms.app.navigate("Settings");
-        ms.app.navigate();
+            ms.app.navigate("Settings/1");
+        else
+            ms.app.navigate();
     }
     function onNavigate(args) {
         if (!args.currentUri)
@@ -110,7 +111,7 @@ $(function () {
         ms.app.navigationManager.navigating.add(onNavigate);
 
       
-        startApp(ms.dataservice.initUserData());
+        startApp(!ms.dataservice.initUserData());
 
         setTimeout(function () {
             document.addEventListener("deviceready", onDeviceReady, false);
