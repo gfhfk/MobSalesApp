@@ -28,7 +28,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
     function initUserData() {
         var dataFromStorage = localStorage.getItem(DATA_KEY);
         if (dataFromStorage) {
-            manager.importEntities(dataFromStorage);
+            manager.importEntities(dataFrStorage);
             return true;
         } else {
             return false;
@@ -59,7 +59,6 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         getRoutes: getRoutes,
         getCustomers: getCustomers,
         saveDataLocally: saveDataLocally,
-        //clearUserData: clearUserData,
 
     };
     return dataservice;
