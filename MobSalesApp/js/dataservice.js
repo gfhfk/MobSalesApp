@@ -23,6 +23,22 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
             name: "Customers",
             query: breeze.EntityQuery.from("Customers").orderBy("CustomerName"),
          },
+       ProductTypes: {
+           name: "ProductTypes",
+           query: breeze.EntityQuery.from("ProductTypes").orderBy("ProductTypeName"),
+       },
+       Products: {
+           name: "Products",
+           query: breeze.EntityQuery.from("Products").orderBy("ProductName"),
+       },
+       Orders: {
+           name: "Orders",
+           query: breeze.EntityQuery.from("Orders").orderBy("Date"),
+       },
+       OrderDetails: {
+           name: "OrderDetails",
+           query: breeze.EntityQuery.from("OrderDetails"),
+       },
     };
     
     function initUserData() {
