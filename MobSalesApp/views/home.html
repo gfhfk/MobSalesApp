@@ -2,8 +2,7 @@
     <div data-options="dxContent : { targetPlaceholder: 'content' } ">
         <div data-bind="dxLookup: { dataSource: routes, displayExpr: 'RouteName', valueExpr: 'RouteID', value: routeId }"></div>
         <div data-bind="dxList: { items: customers }">
-            <!--<div data-options="dxTemplate : { name: 'item' }" data-bind="text: CustomerName, dxAction: '#customers/{RouteID}'" />-->
-            <div data-options="dxTemplate : { name: 'item' }" data-bind="text: CustomerName,visible: filtered" />
+            <div data-options="dxTemplate : { name: 'item' }" data-bind="text: CustomerName, dxAction: '#Orders/{CustomerID}',visible: filtered" />
         </div>
     </div>
 </div>
