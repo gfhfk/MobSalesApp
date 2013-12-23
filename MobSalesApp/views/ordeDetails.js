@@ -1,15 +1,15 @@
-﻿MobileSales.Orders = function (params) {
+﻿MobileSales.OrderDetails = function (params) {
     var app = MobileSales,
         
         self = this;
 
     var vm = {
-        customerID: params.item,
+        orderID: params.item,
         orders: ko.observableArray([]),
         viewShowing: viewShowing,
     };
     function viewShowing() {
-        vm.orders(app.dataservice.getOrders(vm.customerID));
+        vm.orders(app.dataservice.getOrderDetails(vm.orderID));
     }
     return vm;
 };

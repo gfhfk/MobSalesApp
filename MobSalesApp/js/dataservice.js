@@ -68,7 +68,14 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
             query= query.where("CustomerID", "==", customerID);
         return manager.executeQueryLocally(query);
     };
-    
+    function getOrderDetails(orderID) {
+        var query = queries.Orders.query;
+
+        if (typeof orderID != "undefined" && orderID > 0)
+            query = query.where("OrderID", "==", orderID);
+        return manager.executeQueryLocally(query);
+    };
+
     function saveDataLocally() {
         var exportData = manager.exportEntities();
         localStorage.setItem(DATA_KEY, exportData);
@@ -83,6 +90,7 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
         getCustomers: getCustomers,
         saveDataLocally: saveDataLocally,
         getOrders: getOrders,
+        getOrderDetails: getOrderDetails,
     };
     return dataservice;
 }(jQuery, DevExpress, MobileSales);
