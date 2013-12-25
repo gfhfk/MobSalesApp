@@ -128,9 +128,9 @@
     <Content Include="js\q.min.js" />
     <None Include="Scripts\_references.js" />
     <Content Include="views\about.html" />
-    <Content Include="views\ordeDetails.css" />
-    <Content Include="views\ordeDetails.html" />
-    <Content Include="views\ordeDetails.js" />
+    <Content Include="views\orderDetails.css" />
+    <Content Include="views\orderDetails.html" />
+    <Content Include="views\orderDetails.js" />
     <Content Include="views\orders.js" />
     <Content Include="views\orders.html" />
     <Content Include="views\settings.css" />

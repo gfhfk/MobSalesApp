@@ -5,7 +5,7 @@
 
     var vm = {
         orderID: params.item,
-        orders: ko.observableArray([]),
+        orderDetails: ko.observableArray([]),
         viewShowing: viewShowing,
     };
     function viewShowing() {
