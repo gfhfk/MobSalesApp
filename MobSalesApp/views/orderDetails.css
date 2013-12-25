@@ -1,7 +1,9 @@
-﻿.order-date {
+﻿.orderDetails-productName {
+    width: 78%;
     float: left; 
-    margin-right: 15px;
 }
-.order-comment {
-    font-size: 12px;
+.orderDetails-quantity {
+    display: inline-block;
+    width: 10%;
+    text-align: right;
 }

@@ -61,19 +61,28 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
     function getCustomers() {
         return manager.executeQueryLocally(queries.Customers.query);
     };
+    function getProduct(productID) {
+        var query = queries.Products.query.where("ProductID", "==", productID);
+        return manager.executeQueryLocally(query)[0];
+    };
+
     function getOrders(customerID) {
         var query = queries.Orders.query;
     
         if (typeof customerID != "undefined" && customerID > 0)
             query= query.where("CustomerID", "==", customerID);
+
         return manager.executeQueryLocally(query);
     };
     function getOrderDetails(orderID) {
-        var query = queries.Orders.query;
-
+        var query = queries.OrderDetails.query;
         if (typeof orderID != "undefined" && orderID > 0)
             query = query.where("OrderID", "==", orderID);
-        return manager.executeQueryLocally(query);
+        var result = manager.executeQueryLocally(query);
+        result.forEach(function (item) {
+                item.ProductName = getProduct(item.ProductID()).ProductName;
+        });
+        return result;
     };
 
     function saveDataLocally() {

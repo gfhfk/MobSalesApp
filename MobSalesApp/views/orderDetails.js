@@ -9,7 +9,7 @@
         viewShowing: viewShowing,
     };
     function viewShowing() {
-        vm.orders(app.dataservice.getOrderDetails(vm.orderID));
+        vm.orderDetails(app.dataservice.getOrderDetails(vm.orderID));
     }
     return vm;
 };
