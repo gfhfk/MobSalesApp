@@ -82,8 +82,6 @@
     <Content Include="packages.config">
       <SubType>Designer</SubType>
     </Content>
-    <None Include="Properties\PublishProfiles\mobsales - FTP.pubxml" />
-    <None Include="Properties\PublishProfiles\mobsales - Web Deploy.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -126,7 +124,7 @@
     <Content Include="js\datajs-1.1.1.min.js" />
     <Content Include="js\q.js" />
     <Content Include="js\q.min.js" />
-    <None Include="Scripts\_references.js" />
+    <None Include="Scripts\references.js" />
     <Content Include="views\about.html" />
     <Content Include="views\orderDetails.css" />
     <Content Include="views\orderDetails.html" />
