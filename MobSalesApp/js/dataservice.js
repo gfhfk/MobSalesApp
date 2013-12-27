@@ -4,15 +4,9 @@ MobileSales.dataservice =function ($, DX, app, undefined) {
     DATA_KEY = "mobilesales-data",
     logger = app.logger;
     serviceName = "http://mobsalessrv.azurewebsites.net/odata/";
-    //serviceName = "http://localhost:1541/odata/";
-   // serviceName = "http://localhost:23888/odata/";
     breeze.config.initializeAdapterInstances({ dataService: "OData" });
     var manager = new breeze.EntityManager(serviceName);
     var store = manager.metadataStore;
-
-    var Customer = function () {
-        this.isBeingEdited = ko.observable(false);
-    };
 
     var queries = {
        Routes: {

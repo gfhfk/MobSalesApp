@@ -18,10 +18,10 @@ MobileSales.Settings = function (params) {
 
     };
 
-
     vm.message = ko.computed(function () {
         return "Loading ...(left:" + this.loading().length + ")"
     }, vm);
+
     function getEntities() {
         var mapped = $.map(app.dataservice.queries, function (item) {
             item.status = ko.observable("Loading");
