@@ -59,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.xml" />
+    <Content Include="cordova.js" />
     <Content Include="css\dx.android.holo-light.css" />
     <Content Include="css\dx.generic.light.css" />
     <Content Include="css\dx.win8.black.css" />
@@ -126,26 +127,6 @@
     <Content Include="js\q.js" />
     <Content Include="js\q.min.js" />
     <None Include="Scripts\references.js" />
-    <Content Include="Resources\PackageIcons.Android.ic_launcher_36_36.png" />
-    <Content Include="Resources\PackageIcons.Android.ic_launcher_48_48.png" />
-    <Content Include="Resources\PackageIcons.Android.ic_launcher_72_72.png" />
-    <Content Include="Resources\PackageIcons.Android.ic_launcher_96_96.png" />
-    <Content Include="Resources\PackageIcons.Android.splash_200_320.png" />
-    <Content Include="Resources\PackageIcons.Android.splash_320_480.png" />
-    <Content Include="Resources\PackageIcons.Android.splash_480_800.png" />
-    <Content Include="Resources\PackageIcons.Android.splash_720_1280.png" />
-    <Content Include="Resources\PackageIcons.iOS.Default%402x~iphone.png" />
-    <Content Include="Resources\PackageIcons.iOS.Default-568h%402x.png" />
-    <Content Include="Resources\PackageIcons.iOS.Default~iphone.png" />
-    <Content Include="Resources\PackageIcons.iOS.icon%402x.png" />
-    <Content Include="Resources\PackageIcons.iOS.icon.png" />
-    <Content Include="Resources\PackageIcons.iOS.iTunesArtwork.png" />
-    <Content Include="Resources\PackageIcons.Tizen.icon_117_117.png" />
-    <Content Include="Resources\PackageIcons.Tizen.TizenStoreArtwork.png" />
-    <Content Include="Resources\PackageIcons.WP.ApplicationIcon_99_99.png" />
-    <Content Include="Resources\PackageIcons.WP.SplashScreenImage_768_1280.png" />
-    <Content Include="Resources\PackageIcons.WP.TileMedium.png" />
-    <Content Include="Resources\PackageIcons.WP.TileSmall.png" />
     <Content Include="views\about.html" />
     <Content Include="views\orderDetails.css" />
     <Content Include="views\orderDetails.html" />
